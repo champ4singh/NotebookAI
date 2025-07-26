@@ -11,14 +11,15 @@ import type { ChatHistory, Document } from "@shared/schema";
 
 interface ChatInterfaceProps {
   notebookId: string;
+  selectedDocuments?: string[];
 }
 
-export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
+export default function ChatInterface({ notebookId, selectedDocuments: propSelectedDocuments = [] }: ChatInterfaceProps) {
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>(propSelectedDocuments);
 
   const { data: chatHistory = [], isLoading } = useQuery<ChatHistory[]>({
     queryKey: ["/api/notebooks", notebookId, "chat"],
@@ -264,11 +265,11 @@ export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
                     <p className="text-sm text-slate-700 whitespace-pre-wrap">{chat.aiResponse}</p>
 
                     {/* Citations */}
-                    {chat.metadata?.citations && chat.metadata.citations.length > 0 && (
+                    {chat.metadata && typeof chat.metadata === 'object' && 'citations' in chat.metadata && Array.isArray((chat.metadata as any).citations) && (chat.metadata as any).citations.length > 0 && (
                       <div className="mt-3 p-2 bg-white rounded border-l-4 border-blue-600">
                         <p className="text-xs text-slate-500 mb-1">Sources:</p>
                         <div className="flex flex-wrap gap-2">
-                          {chat.metadata.citations.map((citation: any, index: number) => (
+                          {((chat.metadata as any).citations as any[]).map((citation: any, index: number) => (
                             <Badge key={index} variant="secondary" className="text-xs">
                               {citation.filename}
                             </Badge>

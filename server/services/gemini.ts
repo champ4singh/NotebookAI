@@ -32,10 +32,10 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     // Use Gemini's embedding model
     const response = await ai.models.embedContent({
       model: "text-embedding-004",
-      content: text,
+      contents: text,
     });
 
-    return response.embedding || [];
+    return response.embeddings?.[0]?.values || [];
   } catch (error) {
     console.error("Error generating embedding with Gemini:", error);
 
