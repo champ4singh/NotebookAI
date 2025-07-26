@@ -28,6 +28,19 @@ export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
     queryKey: ["/api/notebooks", notebookId, "documents"],
   });
 
+  // Get selected documents from parent component
+  useEffect(() => {
+    const handleDocumentSelectionChange = (event: CustomEvent) => {
+      setSelectedDocuments(event.detail.selectedDocuments);
+    };
+
+    window.addEventListener('documentSelectionChange', handleDocumentSelectionChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('documentSelectionChange', handleDocumentSelectionChange as EventListener);
+    };
+  }, []);
+
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
       const response = await apiRequest("POST", `/api/notebooks/${notebookId}/chat`, {

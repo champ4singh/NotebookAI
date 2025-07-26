@@ -261,35 +261,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get relevant document chunks
       let relevantChunks = await vectorStore.searchSimilar(message, 5);
       console.log(`Found ${relevantChunks.length} relevant chunks for query: "${message}"`);
+      console.log(`Selected documents: ${selectedDocuments ? selectedDocuments.join(', ') : 'none'}`);
       
-      // If no relevant chunks found, get documents from the notebook
-      if (relevantChunks.length === 0) {
-        console.log('No relevant chunks found, fetching notebook documents...');
-        console.log(`Vector store document count: ${vectorStore.getDocumentCount()}`);
+      // If documents are selected, filter to only those documents
+      if (selectedDocuments && selectedDocuments.length > 0) {
+        if (relevantChunks.length > 0) {
+          // Filter existing chunks to selected documents only
+          relevantChunks = relevantChunks.filter(chunk => 
+            selectedDocuments.includes(chunk.documentId)
+          );
+          console.log(`Filtered vector search to ${relevantChunks.length} chunks from selected documents`);
+        }
         
-        const allDocuments = await storage.getNotebookDocuments(notebookId);
-        console.log(`Found ${allDocuments.length} total documents in notebook`);
-        
-        // Filter documents based on selection if provided
-        const documents = selectedDocuments && selectedDocuments.length > 0
-          ? allDocuments.filter(doc => selectedDocuments.includes(doc.id))
-          : allDocuments;
-        
-        console.log(`Using ${documents.length} documents after filtering`);
-        
-        // Convert documents to chunks format for AI processing
-        relevantChunks = documents.map(doc => ({
-          content: doc.content.slice(0, 2000), // Limit content to avoid token limits
-          filename: doc.filename,
-          documentId: doc.id,
-          similarity: 1.0 // Set high similarity since we're directly accessing the documents
-        }));
-      } else if (selectedDocuments && selectedDocuments.length > 0) {
-        // Filter relevant chunks to only include selected documents
-        relevantChunks = relevantChunks.filter(chunk => 
-          selectedDocuments.includes(chunk.documentId)
-        );
-        console.log(`Filtered to ${relevantChunks.length} chunks from selected documents`);
+        // If no chunks found or vector search failed, get the selected documents directly
+        if (relevantChunks.length === 0) {
+          console.log('No relevant chunks found in selected documents, fetching selected documents directly...');
+          const allDocuments = await storage.getNotebookDocuments(notebookId);
+          const selectedDocs = allDocuments.filter(doc => selectedDocuments.includes(doc.id));
+          console.log(`Using ${selectedDocs.length} selected documents directly`);
+          
+          relevantChunks = selectedDocs.map(doc => ({
+            content: doc.content.slice(0, 2000),
+            filename: doc.filename,
+            documentId: doc.id,
+            similarity: 1.0
+          }));
+        }
+      } else {
+        // No specific documents selected, use all available
+        if (relevantChunks.length === 0) {
+          console.log('No relevant chunks found, fetching all notebook documents...');
+          console.log(`Vector store document count: ${vectorStore.getDocumentCount()}`);
+          
+          const allDocuments = await storage.getNotebookDocuments(notebookId);
+          console.log(`Found ${allDocuments.length} total documents in notebook`);
+          
+          relevantChunks = allDocuments.map(doc => ({
+            content: doc.content.slice(0, 2000),
+            filename: doc.filename,
+            documentId: doc.id,
+            similarity: 1.0
+          }));
+        }
       }
       
       // Get recent chat history for context
