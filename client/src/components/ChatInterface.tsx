@@ -14,6 +14,109 @@ interface ChatInterfaceProps {
   selectedDocuments?: string[];
 }
 
+// Function to format chat response with better structure
+function formatChatResponse(text: string) {
+  if (!text) return null;
+  
+  // Split text into paragraphs and lines
+  const lines = text.split('\n');
+  const formattedElements: JSX.Element[] = [];
+  let key = 0;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines but add spacing
+    if (!line) {
+      if (formattedElements.length > 0) {
+        formattedElements.push(<br key={`br-${key++}`} />);
+      }
+      continue;
+    }
+    
+    // Handle numbered lists (1. 2. 3. etc.)
+    if (/^\d+\.\s/.test(line)) {
+      formattedElements.push(
+        <div key={key++} className="ml-4 mb-2">
+          <span className="font-medium text-blue-700">{line.match(/^\d+\./)?.[0]}</span>
+          <span className="ml-2">{line.replace(/^\d+\.\s*/, '')}</span>
+        </div>
+      );
+    }
+    // Handle bullet points (- or • or *)
+    else if (/^[-•*]\s/.test(line)) {
+      formattedElements.push(
+        <div key={key++} className="ml-4 mb-1 flex items-start">
+          <span className="text-blue-600 mr-2 mt-1">•</span>
+          <span>{line.replace(/^[-•*]\s*/, '')}</span>
+        </div>
+      );
+    }
+    // Handle sub-bullet points (indented)
+    else if (/^\s+[-•*]\s/.test(line)) {
+      formattedElements.push(
+        <div key={key++} className="ml-8 mb-1 flex items-start">
+          <span className="text-slate-400 mr-2 mt-1">◦</span>
+          <span>{line.replace(/^\s*[-•*]\s*/, '')}</span>
+        </div>
+      );
+    }
+    // Handle headings (lines that end with :)
+    else if (line.endsWith(':') && line.length < 80) {
+      formattedElements.push(
+        <div key={key++} className="font-semibold text-slate-800 mt-3 mb-2">
+          {line}
+        </div>
+      );
+    }
+    // Handle citation references [1], [2], etc.
+    else if (/\[\d+\]/.test(line)) {
+      const parts = line.split(/(\[\d+\])/);
+      formattedElements.push(
+        <div key={key++} className="mb-2">
+          {parts.map((part, index) => 
+            /\[\d+\]/.test(part) ? (
+              <span key={index} className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mr-1">
+                {part}
+              </span>
+            ) : (
+              <span key={index}>{part}</span>
+            )
+          )}
+        </div>
+      );
+    }
+    // Regular paragraphs
+    else {
+      // Check if this line contains citation references and format them
+      if (/\[\d+\]/.test(line)) {
+        const parts = line.split(/(\[\d+\])/);
+        formattedElements.push(
+          <p key={key++} className="mb-2 leading-relaxed">
+            {parts.map((part, index) => 
+              /\[\d+\]/.test(part) ? (
+                <span key={index} className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mx-0.5">
+                  {part}
+                </span>
+              ) : (
+                <span key={index}>{part}</span>
+              )
+            )}
+          </p>
+        );
+      } else {
+        formattedElements.push(
+          <p key={key++} className="mb-2 leading-relaxed">
+            {line}
+          </p>
+        );
+      }
+    }
+  }
+  
+  return <div className="space-y-1">{formattedElements}</div>;
+}
+
 export default function ChatInterface({ notebookId, selectedDocuments = [] }: ChatInterfaceProps) {
   const { toast } = useToast();
   const [message, setMessage] = useState("");
@@ -254,7 +357,9 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                 </div>
                 <div className="flex-1">
                   <div className="bg-slate-50 rounded-lg p-4">
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{chat.aiResponse as string}</p>
+                    <div className="text-sm text-slate-700 prose prose-sm max-w-none">
+                      {formatChatResponse(chat.aiResponse as string)}
+                    </div>
 
                     {/* Citations */}
                     {chat.metadata && typeof chat.metadata === 'object' && 'citations' in chat.metadata && Array.isArray((chat.metadata as any).citations) && (chat.metadata as any).citations.length > 0 && (
