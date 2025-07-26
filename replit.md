@@ -44,7 +44,8 @@ Preferred communication style: Simple, everyday language.
 
 ### Document Processing Pipeline
 - **Supported Formats**: PDF, DOCX, TXT, Markdown files
-- **Text Extraction**: File-type specific processors
+- **PDF Processing**: pdf-parse for text extraction + Tesseract.js OCR for scanned/image PDFs
+- **Text Extraction**: File-type specific processors with OCR fallback
 - **Chunking**: Text segmentation for embeddings
 - **Embeddings**: Gemini text-embedding-004 model
 - **Search**: Cosine similarity-based semantic search

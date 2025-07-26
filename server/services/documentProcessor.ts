@@ -1,7 +1,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { PDFDocument } from 'pdf-lib';
 import mammoth from 'mammoth';
+import Tesseract from 'tesseract.js';
+import pdf2pic from 'pdf2pic';
 
 export interface ProcessedDocument {
   content: string;
@@ -46,51 +47,101 @@ export async function processDocument(filePath: string, filename: string): Promi
 
 async function processPDF(filePath: string): Promise<string> {
   try {
-    // Read PDF as buffer
+    console.log(`Processing PDF: ${filePath}`);
     const buffer = await fs.readFile(filePath);
     
-    // Parse PDF using pdf-lib
-    const pdfDoc = await PDFDocument.load(buffer);
-    const pageCount = pdfDoc.getPageCount();
-    
+    // Step 1: Try text extraction with dynamic pdf-parse import
     let extractedText = '';
+    try {
+      const pdfParse = (await import('pdf-parse')).default;
+      const pdfData = await pdfParse(buffer);
+      extractedText = pdfData.text || '';
+      console.log(`PDF text extraction: ${extractedText.length} characters extracted`);
+    } catch (parseError) {
+      console.log('PDF text extraction failed, will use OCR:', parseError instanceof Error ? parseError.message : 'Unknown error');
+    }
     
-    // Try to extract text from each page
-    const pages = pdfDoc.getPages();
-    for (let i = 0; i < pages.length; i++) {
+    // Step 2: If no text extracted or very little text, use OCR
+    if (!extractedText || extractedText.trim().length < 50) {
+      console.log('Performing OCR on PDF pages...');
+      extractedText = await performPDFOCR(filePath, buffer);
+    }
+    
+    // Step 3: Clean and validate extracted text
+    const cleanedText = extractedText
+      .replace(/\0/g, '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .trim();
+    
+    if (!cleanedText || cleanedText.length < 10) {
+      throw new Error('No readable text could be extracted from the PDF');
+    }
+    
+    console.log(`Final extracted text: ${cleanedText.length} characters`);
+    return cleanedText;
+    
+  } catch (error) {
+    console.error('Error processing PDF:', error);
+    throw new Error(`Failed to process PDF file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+async function performPDFOCR(filePath: string, buffer: Buffer): Promise<string> {
+  try {
+    // Convert PDF pages to images
+    const convert = pdf2pic.fromBuffer(buffer, {
+      density: 200,           // DPI for better quality
+      saveFilename: "page",
+      savePath: "/tmp",
+      format: "png",
+      width: 1200,           // Higher resolution for better OCR
+      height: 1600
+    });
+    
+    let allText = '';
+    const maxPages = 10; // Limit to first 10 pages for performance
+    
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
       try {
-        // Note: pdf-lib doesn't have built-in text extraction
-        // This is a basic implementation that gets page info
-        const page = pages[i];
-        const { width, height } = page.getSize();
+        console.log(`Processing page ${pageNum} with OCR...`);
         
-        // For now, we'll indicate that the PDF was processed but text extraction is limited
-        extractedText += `Page ${i + 1} (${Math.round(width)}x${Math.round(height)})\n`;
+        // Convert PDF page to image
+        const result = await convert(pageNum, { responseType: "buffer" });
+        
+        if (!result || !result.buffer) {
+          console.log(`No image data for page ${pageNum}, stopping OCR`);
+          break;
+        }
+        
+        // Perform OCR on the image
+        const ocrResult = await Tesseract.recognize(
+          result.buffer,
+          'eng',
+          {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                console.log(`OCR progress page ${pageNum}: ${Math.round(m.progress * 100)}%`);
+              }
+            }
+          }
+        );
+        
+        const pageText = ocrResult.data.text.trim();
+        if (pageText) {
+          allText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
+        }
+        
       } catch (pageError) {
-        console.error(`Error processing page ${i + 1}:`, pageError);
+        console.error(`Error processing page ${pageNum}:`, pageError);
+        // Continue with next page
       }
     }
     
-    if (!extractedText || extractedText.trim().length === 0) {
-      // If no text extracted, return metadata
-      const stats = await fs.stat(filePath);
-      return `PDF Document (${Math.round(stats.size / 1024)}KB, ${pageCount} pages)
-      
-This PDF file has been uploaded successfully. The document contains ${pageCount} pages. 
-Note: Advanced PDF text extraction requires additional OCR capabilities. The file is stored and can be referenced in conversations.`;
-    }
-    
-    // Return basic PDF info for now
-    const stats = await fs.stat(filePath);
-    return `PDF Document (${Math.round(stats.size / 1024)}KB, ${pageCount} pages)
-
-This PDF file has been processed successfully. The document contains ${pageCount} pages and is available for reference in conversations.
-
-${extractedText}`;
+    return allText.trim();
     
   } catch (error) {
-    console.error("Error processing PDF:", error);
-    throw new Error("Failed to process PDF file");
+    console.error('OCR processing failed:', error);
+    throw new Error('OCR text extraction failed');
   }
 }
 
