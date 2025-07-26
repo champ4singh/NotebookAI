@@ -4,6 +4,12 @@
 
 NotebookAI is an AI-powered document analysis and chat application built with a modern full-stack architecture. It allows users to upload documents, ask questions about them, and extract insights through interactive conversations with an AI assistant.
 
+## Recent Changes
+
+- **Enhanced Citation System (July 26, 2025)**: Implemented numbered citation references [1], [2] in AI responses with document titles extracted from content. Citations now display as "[1] Document Title - Filename" format.
+- **Document Title Extraction**: Added automatic title extraction from document content during upload and display in document sidebar.
+- **Improved Document Selection**: Enhanced document filtering to work with extracted titles and maintain consistency across vector search and direct document retrieval.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

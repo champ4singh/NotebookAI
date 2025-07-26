@@ -241,10 +241,15 @@ export default function DocumentManager({
                           {document.filename}
                         </h3>
                       </div>
-                    <p className="text-xs text-slate-500">
+                      {document.title && (
+                        <p className="text-xs text-slate-700 font-medium mb-1 pl-6">
+                          {document.title}
+                        </p>
+                      )}
+                      <p className="text-xs text-slate-500 pl-6">
                         Uploaded {new Date(document.createdAt!).toLocaleDateString()}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-slate-500 mt-1 pl-6">
                         {formatFileSize(document.size)}
                       </p>
                     </div>
