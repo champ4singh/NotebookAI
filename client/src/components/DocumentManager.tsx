@@ -242,7 +242,7 @@ export default function DocumentManager({
                         </h3>
                       </div>
                       {document.title && (
-                        <p className="text-xs text-slate-700 font-medium mb-1 pl-6">
+                        <p className="text-xs text-blue-900 font-bold mb-1 pl-6">
                           {document.title}
                         </p>
                       )}
