@@ -69,16 +69,7 @@ export async function generateChatResponse(
 
 Based on the provided document context, answer the user's question accurately and comprehensively. Always cite your sources by referencing the document names when you use information from them.
 
-Format your response as JSON with the following structure:
-{
-  "content": "Your detailed response here",
-  "citations": [
-    {
-      "filename": "document_name.pdf",
-      "documentId": "document_id"
-    }
-  ]
-}
+Provide a clear, well-structured response that directly answers the user's question. Do not use markdown code blocks or JSON formatting - just provide a natural, conversational response.
 
 Document Context:
 ${context}`;
@@ -102,30 +93,18 @@ Current question: ${userMessage}`;
 
     const responseText = response.text || "";
     
-    // Try to parse JSON response, fallback to plain text
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      // If not JSON, create a structured response
-      result = {
-        content: responseText,
-        citations: relevantChunks.map(chunk => ({
-          filename: chunk.filename,
-          documentId: chunk.documentId
-        }))
-      };
-    }
+    // Clean the response text to remove any markdown formatting
+    const cleanedContent = responseText.replace(/```json\s*|\s*```/g, '').trim();
     
-    // Ensure citations include document IDs
+    // Generate citations from relevant chunks
     const citations = relevantChunks.map(chunk => ({
       filename: chunk.filename,
       documentId: chunk.documentId
     }));
 
     return {
-      content: result.content || "I apologize, but I couldn't generate a proper response.",
-      citations: result.citations || citations
+      content: cleanedContent || "I apologize, but I couldn't generate a proper response.",
+      citations: citations
     };
   } catch (error) {
     console.error("Error generating chat response:", error);
