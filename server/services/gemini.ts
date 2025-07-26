@@ -34,22 +34,22 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       model: "text-embedding-004",
       content: text,
     });
-    
+
     return response.embedding || [];
   } catch (error) {
     console.error("Error generating embedding with Gemini:", error);
-    
+
     // Fallback to simple hash-based embedding if Gemini fails
     const hash = text.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
     }, 0);
-    
+
     // Create a simple 768-dimensional vector based on text features
     const embedding = new Array(768).fill(0).map((_, i) => {
       return Math.sin(hash * (i + 1) / 768) * Math.cos(text.length * (i + 1) / 768);
     });
-    
+
     console.log("Using fallback embedding generation");
     return embedding;
   }
@@ -92,10 +92,10 @@ Current question: ${userMessage}`;
     });
 
     const responseText = response.text || "";
-    
+
     // Clean the response text to remove any markdown formatting
     const cleanedContent = responseText.replace(/```json\s*|\s*```/g, '').trim();
-    
+
     // Generate citations from relevant chunks
     const citations = relevantChunks.map(chunk => ({
       filename: chunk.filename,

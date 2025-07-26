@@ -259,12 +259,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get relevant document chunks
-      const relevantChunks = await vectorStore.searchSimilar(message, 5);
+      let relevantChunks = await vectorStore.searchSimilar(message, 5);
       console.log(`Found ${relevantChunks.length} relevant chunks for query: "${message}"`);
       
+      // If no relevant chunks found, get all documents from the notebook
       if (relevantChunks.length === 0) {
-        console.log('No relevant chunks found, checking vector store status...');
+        console.log('No relevant chunks found, fetching all notebook documents...');
         console.log(`Vector store document count: ${vectorStore.getDocumentCount()}`);
+        
+        const documents = await storage.getNotebookDocuments(notebookId);
+        console.log(`Found ${documents.length} documents in notebook`);
+        
+        // Convert documents to chunks format for AI processing
+        relevantChunks = documents.map(doc => ({
+          content: doc.content.slice(0, 2000), // Limit content to avoid token limits
+          filename: doc.filename,
+          documentId: doc.id,
+          similarity: 1.0 // Set high similarity since we're directly accessing the documents
+        }));
       }
       
       // Get recent chat history for context
