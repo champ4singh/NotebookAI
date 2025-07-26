@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +16,7 @@ export default function Notebook() {
   const { id } = useParams();
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function Notebook() {
 
   if (error) {
     const errorMessage = error instanceof Error ? error.message : "Failed to load notebook";
-    
+
     if (isUnauthorizedError(error)) {
       toast({
         title: "Unauthorized",
@@ -87,8 +89,15 @@ export default function Notebook() {
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header notebook={notebook} />
       <div className="flex-1 flex overflow-hidden">
-        <DocumentManager notebookId={id!} />
-        <ChatInterface notebookId={id!} />
+        <DocumentManager 
+          notebookId={id!} 
+          selectedDocuments={selectedDocuments}
+          onDocumentSelectionChange={setSelectedDocuments}
+        />
+        <ChatInterface 
+          notebookId={id!} 
+          selectedDocuments={selectedDocuments}
+        />
         <NotesPanel notebookId={id!} />
       </div>
     </div>

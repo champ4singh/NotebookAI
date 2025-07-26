@@ -18,6 +18,7 @@ export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
 
   const { data: chatHistory = [], isLoading } = useQuery<ChatHistory[]>({
     queryKey: ["/api/notebooks", notebookId, "chat"],
@@ -28,10 +29,10 @@ export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
   });
 
   const chatMutation = useMutation({
-    mutationFn: async (userMessage: string) => {
-      setIsTyping(true);
+    mutationFn: async (message: string) => {
       const response = await apiRequest("POST", `/api/notebooks/${notebookId}/chat`, {
-        message: userMessage
+        message: message,
+        selectedDocuments: selectedDocuments.length > 0 ? selectedDocuments : undefined
       });
       return response.json();
     },
@@ -248,7 +249,7 @@ export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
                 <div className="flex-1">
                   <div className="bg-slate-50 rounded-lg p-4">
                     <p className="text-sm text-slate-700 whitespace-pre-wrap">{chat.aiResponse}</p>
-                    
+
                     {/* Citations */}
                     {chat.metadata?.citations && chat.metadata.citations.length > 0 && (
                       <div className="mt-3 p-2 bg-white rounded border-l-4 border-blue-600">

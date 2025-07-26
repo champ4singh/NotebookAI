@@ -2,20 +2,28 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, FileText, Eye, Trash2 } from "lucide-react";
+import { Plus, FileText, Eye, Trash2, CheckSquare, Square } from "lucide-react";
 import DocumentPreviewModal from "./DocumentPreviewModal";
 import type { Document } from "@shared/schema";
 
 interface DocumentManagerProps {
   notebookId: string;
+  selectedDocuments?: string[];
+  onDocumentSelectionChange?: (selectedIds: string[]) => void;
 }
 
-export default function DocumentManager({ notebookId }: DocumentManagerProps) {
+export default function DocumentManager({ 
+  notebookId, 
+  selectedDocuments = [], 
+  onDocumentSelectionChange 
+}: DocumentManagerProps) {
   const { toast } = useToast();
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [localSelectedDocuments, setLocalSelectedDocuments] = useState<string[]>(selectedDocuments);
 
   const { data: documents = [], isLoading } = useQuery<Document[]>({
     queryKey: ["/api/notebooks", notebookId, "documents"],
@@ -143,6 +151,29 @@ export default function DocumentManager({ notebookId }: DocumentManagerProps) {
     return content.slice(0, 150) + (content.length > 150 ? "..." : "");
   };
 
+  const handleDocumentSelection = (documentId: string, checked: boolean) => {
+    const newSelection = checked
+      ? [...localSelectedDocuments, documentId]
+      : localSelectedDocuments.filter(id => id !== documentId);
+    
+    setLocalSelectedDocuments(newSelection);
+    onDocumentSelectionChange?.(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (!documents) return;
+    
+    const allSelected = documents.length === localSelectedDocuments.length;
+    const newSelection = allSelected ? [] : documents.map(doc => doc.id);
+    
+    setLocalSelectedDocuments(newSelection);
+    onDocumentSelectionChange?.(newSelection);
+  };
+
+  const isDocumentSelected = (documentId: string) => {
+    return localSelectedDocuments.includes(documentId);
+  };
+
   return (
     <>
       <div className="w-80 bg-white border-r border-slate-200 flex flex-col">
@@ -154,6 +185,25 @@ export default function DocumentManager({ notebookId }: DocumentManagerProps) {
               {documents?.length || 0} files
             </Badge>
           </div>
+          
+          {/* Selection Controls */}
+          {documents && documents.length > 0 && (
+            <div className="flex items-center justify-between mb-3 p-2 bg-slate-50 rounded-md">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={documents.length === localSelectedDocuments.length}
+                  onCheckedChange={handleSelectAll}
+                  id="select-all"
+                />
+                <label htmlFor="select-all" className="text-sm text-slate-700 cursor-pointer">
+                  Select All
+                </label>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {localSelectedDocuments.length} selected
+              </Badge>
+            </div>
+          )}
           
           {/* Upload Button */}
           <Button 
@@ -174,21 +224,30 @@ export default function DocumentManager({ notebookId }: DocumentManagerProps) {
             </div>
           ) : documents && documents.length > 0 ? (
             documents.map((document: Document) => (
-              <div key={document.id} className="group border border-slate-200 rounded-lg p-3 hover:border-blue-600 hover:shadow-sm transition-all">
+              <div key={document.id} className={`group border rounded-lg p-3 hover:border-blue-600 hover:shadow-sm transition-all ${
+                isDocumentSelected(document.id) ? 'border-blue-600 bg-blue-50' : 'border-slate-200'
+              }`}>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-lg">{getFileIcon(document.fileType)}</span>
-                      <h3 className="text-sm font-medium text-slate-900 truncate">
-                        {document.filename}
-                      </h3>
-                    </div>
+                  <div className="flex items-start space-x-3 flex-1 min-w-0">
+                    <Checkbox
+                      checked={isDocumentSelected(document.id)}
+                      onCheckedChange={(checked) => handleDocumentSelection(document.id, checked as boolean)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="text-lg">{getFileIcon(document.fileType)}</span>
+                        <h3 className="text-sm font-medium text-slate-900 truncate">
+                          {document.filename}
+                        </h3>
+                      </div>
                     <p className="text-xs text-slate-500">
-                      Uploaded {new Date(document.createdAt!).toLocaleDateString()}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {formatFileSize(document.size)}
-                    </p>
+                        Uploaded {new Date(document.createdAt!).toLocaleDateString()}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {formatFileSize(document.size)}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
