@@ -13,6 +13,7 @@ class VectorStore {
   private vectors: DocumentVector[] = [];
 
   async addDocument(documentId: string, filename: string, chunks: string[]): Promise<void> {
+    console.log(`Adding document ${documentId} with ${chunks.length} chunks to vector store`);
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       try {
@@ -25,10 +26,12 @@ class VectorStore {
           content: chunk,
           embedding
         });
+        console.log(`Added chunk ${i} for document ${documentId}`);
       } catch (error) {
         console.error(`Error adding chunk ${i} for document ${documentId}:`, error);
       }
     }
+    console.log(`Vector store now contains ${this.vectors.length} total vectors`);
   }
 
   async searchSimilar(query: string, topK: number = 5): Promise<{
@@ -37,7 +40,9 @@ class VectorStore {
     documentId: string;
     similarity: number;
   }[]> {
+    console.log(`Vector store search: ${this.vectors.length} vectors available`);
     if (this.vectors.length === 0) {
+      console.log('No vectors in store, returning empty results');
       return [];
     }
 

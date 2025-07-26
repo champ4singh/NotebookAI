@@ -243,6 +243,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get relevant document chunks
       const relevantChunks = await vectorStore.searchSimilar(message, 5);
+      console.log(`Found ${relevantChunks.length} relevant chunks for query: "${message}"`);
+      
+      if (relevantChunks.length === 0) {
+        console.log('No relevant chunks found, checking vector store status...');
+        console.log(`Vector store document count: ${vectorStore.getDocumentCount()}`);
+      }
       
       // Get recent chat history for context
       const recentChatHistory = await storage.getNotebookChatHistory(notebookId);

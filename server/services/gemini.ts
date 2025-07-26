@@ -29,9 +29,17 @@ export interface ChatResponse {
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    // Note: Gemini doesn't have a direct embedding API like OpenAI
-    // For now, we'll create a simple hash-based embedding as a placeholder
-    // In production, you might want to use a different embedding service
+    // Use Gemini's embedding model
+    const response = await ai.models.embedContent({
+      model: "text-embedding-004",
+      content: text,
+    });
+    
+    return response.embedding || [];
+  } catch (error) {
+    console.error("Error generating embedding with Gemini:", error);
+    
+    // Fallback to simple hash-based embedding if Gemini fails
     const hash = text.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
@@ -42,10 +50,8 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       return Math.sin(hash * (i + 1) / 768) * Math.cos(text.length * (i + 1) / 768);
     });
     
+    console.log("Using fallback embedding generation");
     return embedding;
-  } catch (error) {
-    console.error("Error generating embedding:", error);
-    throw new Error("Failed to generate embedding");
   }
 }
 
@@ -94,7 +100,7 @@ Current question: ${userMessage}`;
       contents: fullPrompt,
     });
 
-    const responseText = response.text;
+    const responseText = response.text || "";
     
     // Try to parse JSON response, fallback to plain text
     let result;
