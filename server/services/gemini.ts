@@ -90,32 +90,26 @@ ${historyContext}
 Current question: ${userMessage}`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            content: { type: "string" },
-            citations: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  filename: { type: "string" },
-                  documentId: { type: "string" }
-                },
-                required: ["filename", "documentId"]
-              }
-            }
-          },
-          required: ["content", "citations"]
-        }
-      },
+      model: "gemini-2.0-flash-001",
       contents: fullPrompt,
     });
 
-    const result = JSON.parse(response.text || '{}');
+    const responseText = response.text;
+    
+    // Try to parse JSON response, fallback to plain text
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      // If not JSON, create a structured response
+      result = {
+        content: responseText,
+        citations: relevantChunks.map(chunk => ({
+          filename: chunk.filename,
+          documentId: chunk.documentId
+        }))
+      };
+    }
     
     // Ensure citations include document IDs
     const citations = relevantChunks.map(chunk => ({
@@ -142,7 +136,7 @@ Please summarize this document (${filename}):
 ${content.slice(0, 4000)}`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.0-flash-001",
       contents: prompt,
     });
 
