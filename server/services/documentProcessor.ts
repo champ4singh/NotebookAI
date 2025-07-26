@@ -1,5 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import pdf from 'pdf-parse';
+import mammoth from 'mammoth';
 
 export interface ProcessedDocument {
   content: string;
@@ -44,39 +46,49 @@ export async function processDocument(filePath: string, filename: string): Promi
 
 async function processPDF(filePath: string): Promise<string> {
   try {
-    // Read as buffer first to handle binary data
+    // Read PDF as buffer
     const buffer = await fs.readFile(filePath);
     
-    // For now, we'll extract basic metadata and return a placeholder
-    // In production, you'd use pdf-parse or similar library
-    const stats = await fs.stat(filePath);
-    return `PDF Document (${Math.round(stats.size / 1024)}KB)
+    // Extract text using pdf-parse
+    const data = await pdf(buffer);
     
-This is a PDF file that has been uploaded successfully. 
-PDF text extraction is not yet implemented, but the file has been stored and can be referenced in conversations.
-
-To fully extract text content from PDFs, a PDF parsing library like pdf-parse would need to be installed.`;
+    if (!data.text || data.text.trim().length === 0) {
+      // If no text extracted, return metadata
+      const stats = await fs.stat(filePath);
+      return `PDF Document (${Math.round(stats.size / 1024)}KB, ${data.numpages} pages)
+      
+This PDF file appears to contain mostly images or non-text content. No readable text could be extracted for analysis.`;
+    }
+    
+    // Return the extracted text
+    return data.text;
   } catch (error) {
-    throw new Error("Failed to process PDF file");
+    console.error("Error processing PDF:", error);
+    throw new Error("Failed to extract text from PDF file");
   }
 }
 
 async function processDocx(filePath: string): Promise<string> {
   try {
-    // Read as buffer first to handle binary data
+    // Read DOCX as buffer
     const buffer = await fs.readFile(filePath);
     
-    // For now, we'll extract basic metadata and return a placeholder
-    // In production, you'd use mammoth or similar library
-    const stats = await fs.stat(filePath);
-    return `DOCX Document (${Math.round(stats.size / 1024)}KB)
+    // Extract text using mammoth
+    const result = await mammoth.extractRawText({ buffer });
     
-This is a DOCX file that has been uploaded successfully. 
-DOCX text extraction is not yet implemented, but the file has been stored and can be referenced in conversations.
-
-To fully extract text content from DOCX files, a document parsing library like mammoth would need to be installed.`;
+    if (!result.value || result.value.trim().length === 0) {
+      // If no text extracted, return metadata
+      const stats = await fs.stat(filePath);
+      return `DOCX Document (${Math.round(stats.size / 1024)}KB)
+      
+This DOCX file appears to contain mostly images or non-text content. No readable text could be extracted for analysis.`;
+    }
+    
+    // Return the extracted text
+    return result.value;
   } catch (error) {
-    throw new Error("Failed to process DOCX file");
+    console.error("Error processing DOCX:", error);
+    throw new Error("Failed to extract text from DOCX file");
   }
 }
 
