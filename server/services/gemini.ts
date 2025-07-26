@@ -16,6 +16,7 @@ export interface ChatMessage {
 export interface DocumentChunk {
   content: string;
   filename: string;
+  title?: string;
   documentId: string;
 }
 
@@ -23,6 +24,7 @@ export interface ChatResponse {
   content: string;
   citations: {
     filename: string;
+    title?: string;
     documentId: string;
   }[];
 }
@@ -100,6 +102,7 @@ Current question: ${userMessage}`;
     // Generate citations from relevant chunks
     const citations = relevantChunks.map(chunk => ({
       filename: chunk.filename,
+      title: chunk.title || chunk.filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "),
       documentId: chunk.documentId
     }));
 

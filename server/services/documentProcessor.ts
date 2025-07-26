@@ -7,6 +7,7 @@ import pdf2pic from 'pdf2pic';
 export interface ProcessedDocument {
   content: string;
   chunks: string[];
+  title: string;
 }
 
 export async function processDocument(filePath: string, filename: string): Promise<ProcessedDocument> {
@@ -34,10 +35,12 @@ export async function processDocument(filePath: string, filename: string): Promi
     const sanitizedContent = content.replace(/\0/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
     
     const chunks = chunkText(sanitizedContent);
+    const title = extractDocumentTitle(sanitizedContent, filename);
     
     return {
       content: sanitizedContent,
-      chunks
+      chunks,
+      title
     };
   } catch (error) {
     console.error(`Error processing document ${filename}:`, error);
@@ -184,6 +187,45 @@ function chunkText(text: string, chunkSize: number = 512): string[] {
   }
   
   return chunks;
+}
+
+function extractDocumentTitle(content: string, filename: string): string {
+  // Try to extract title from content - look for common title patterns
+  const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  // Check first few lines for title patterns
+  for (let i = 0; i < Math.min(10, lines.length); i++) {
+    const line = lines[i];
+    
+    // Skip very short or very long lines
+    if (line.length < 5 || line.length > 150) continue;
+    
+    // Skip lines that look like headers, dates, or metadata
+    if (line.match(/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/) || 
+        line.match(/^(abstract|introduction|conclusion|references)$/i) ||
+        line.match(/^(page \d+|chapter \d+)$/i)) {
+      continue;
+    }
+    
+    // Look for markdown headers
+    const markdownMatch = line.match(/^#+\s*(.+)$/);
+    if (markdownMatch) {
+      const title = markdownMatch[1].trim();
+      if (title.length >= 10 && title.length <= 100) {
+        return title;
+      }
+    }
+    
+    // If it's a reasonably sized line and contains mostly letters, it might be a title
+    if (line.length >= 10 && line.length <= 100 && 
+        /^[A-Z]/.test(line) && 
+        (line.match(/[a-zA-Z]/g) || []).length / line.length > 0.7) {
+      return line;
+    }
+  }
+  
+  // Fallback: create title from filename
+  return filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
 }
 
 export function getFileIcon(filename: string): string {

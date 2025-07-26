@@ -254,7 +254,7 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                 </div>
                 <div className="flex-1">
                   <div className="bg-slate-50 rounded-lg p-4">
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{chat.aiResponse}</p>
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{chat.aiResponse as string}</p>
 
                     {/* Citations */}
                     {chat.metadata && typeof chat.metadata === 'object' && 'citations' in chat.metadata && Array.isArray((chat.metadata as any).citations) && (chat.metadata as any).citations.length > 0 && (
@@ -262,8 +262,8 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                         <p className="text-xs text-slate-500 mb-2">Sources:</p>
                         <div className="space-y-1">
                           {((chat.metadata as any).citations as any[]).map((citation: any, index: number) => {
-                            // Create a cleaner title from filename
-                            const title = citation.filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+                            // Use stored title or create one from filename
+                            const title = citation.title || citation.filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
                             return (
                               <div key={index} className="text-xs text-slate-600">
                                 <span className="font-medium">[{index + 1}]</span> {title} - {citation.filename}
@@ -291,7 +291,7 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                       variant="ghost"
                       size="sm"
                       className="text-xs h-auto p-1"
-                      onClick={() => handleCopyResponse(chat.aiResponse)}
+                      onClick={() => handleCopyResponse(chat.aiResponse as string)}
                     >
                       <Copy className="w-3 h-3 mr-1" />
                       Copy

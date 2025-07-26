@@ -48,6 +48,7 @@ export const documents = pgTable("documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   notebookId: varchar("notebook_id").notNull().references(() => notebooks.id, { onDelete: "cascade" }),
   filename: varchar("filename").notNull(),
+  title: varchar("title"),
   fileType: varchar("file_type").notNull(),
   content: text("content").notNull(),
   size: integer("size").notNull(),

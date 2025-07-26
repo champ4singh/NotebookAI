@@ -164,11 +164,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const { content, chunks } = await processDocument(req.file.path, req.file.originalname);
+      const { content, chunks, title } = await processDocument(req.file.path, req.file.originalname);
       
       const documentData = {
         notebookId,
         filename: req.file.originalname,
+        title,
         fileType: path.extname(req.file.originalname).toLowerCase(),
         content,
         size: req.file.size,
@@ -177,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const document = await storage.createDocument(documentData);
       
       // Add to vector store for semantic search
-      await vectorStore.addDocument(document.id, document.filename, chunks);
+      await vectorStore.addDocument(document.id, document.filename, chunks, title);
 
       // Clean up uploaded file
       await fs.unlink(req.file.path);
@@ -283,6 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           relevantChunks = selectedDocs.map(doc => ({
             content: doc.content.slice(0, 2000),
             filename: doc.filename,
+            title: doc.title || undefined,
             documentId: doc.id,
             similarity: 1.0
           }));
@@ -299,6 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           relevantChunks = allDocuments.map(doc => ({
             content: doc.content.slice(0, 2000),
             filename: doc.filename,
+            title: doc.title || undefined,
             documentId: doc.id,
             similarity: 1.0
           }));

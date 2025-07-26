@@ -4,6 +4,7 @@ interface DocumentVector {
   id: string;
   documentId: string;
   filename: string;
+  title?: string;
   content: string;
   embedding: number[];
 }
@@ -12,7 +13,7 @@ interface DocumentVector {
 class VectorStore {
   private vectors: DocumentVector[] = [];
 
-  async addDocument(documentId: string, filename: string, chunks: string[]): Promise<void> {
+  async addDocument(documentId: string, filename: string, chunks: string[], title?: string): Promise<void> {
     console.log(`Adding document ${documentId} with ${chunks.length} chunks to vector store`);
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -23,6 +24,7 @@ class VectorStore {
           id: `${documentId}_${i}`,
           documentId,
           filename,
+          title,
           content: chunk,
           embedding
         });
@@ -37,6 +39,7 @@ class VectorStore {
   async searchSimilar(query: string, topK: number = 5): Promise<{
     content: string;
     filename: string;
+    title?: string;
     documentId: string;
     similarity: number;
   }[]> {
@@ -57,9 +60,10 @@ class VectorStore {
       return similarities
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, topK)
-        .map(({ content, filename, documentId, similarity }) => ({
+        .map(({ content, filename, title, documentId, similarity }) => ({
           content,
           filename,
+          title,
           documentId,
           similarity
         }));
