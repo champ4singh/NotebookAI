@@ -14,12 +14,11 @@ interface ChatInterfaceProps {
   selectedDocuments?: string[];
 }
 
-export default function ChatInterface({ notebookId, selectedDocuments: propSelectedDocuments = [] }: ChatInterfaceProps) {
+export default function ChatInterface({ notebookId, selectedDocuments = [] }: ChatInterfaceProps) {
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [selectedDocuments, setSelectedDocuments] = useState<string[]>(propSelectedDocuments);
 
   const { data: chatHistory = [], isLoading } = useQuery<ChatHistory[]>({
     queryKey: ["/api/notebooks", notebookId, "chat"],
@@ -29,21 +28,14 @@ export default function ChatInterface({ notebookId, selectedDocuments: propSelec
     queryKey: ["/api/notebooks", notebookId, "documents"],
   });
 
-  // Get selected documents from parent component
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
-    const handleDocumentSelectionChange = (event: CustomEvent) => {
-      setSelectedDocuments(event.detail.selectedDocuments);
-    };
-
-    window.addEventListener('documentSelectionChange', handleDocumentSelectionChange as EventListener);
-    
-    return () => {
-      window.removeEventListener('documentSelectionChange', handleDocumentSelectionChange as EventListener);
-    };
-  }, []);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
+      console.log(`Sending chat with selectedDocuments:`, selectedDocuments);
       const response = await apiRequest("POST", `/api/notebooks/${notebookId}/chat`, {
         message: message,
         selectedDocuments: selectedDocuments.length > 0 ? selectedDocuments : undefined

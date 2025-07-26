@@ -92,7 +92,10 @@ export default function Notebook() {
         <DocumentManager 
           notebookId={id!} 
           selectedDocuments={selectedDocuments}
-          onDocumentSelectionChange={setSelectedDocuments}
+          onDocumentSelectionChange={(newSelection) => {
+            console.log('Document selection changed to:', newSelection);
+            setSelectedDocuments(newSelection);
+          }}
         />
         <ChatInterface 
           notebookId={id!} 
