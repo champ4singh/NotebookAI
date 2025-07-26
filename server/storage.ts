@@ -173,3 +173,9 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+
+
+export async function clearNotebookChatHistory(notebookId: string): Promise<void> {
+  await db.delete(chatHistory).where(eq(chatHistory.notebookId, notebookId));
+}

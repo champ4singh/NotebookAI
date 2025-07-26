@@ -231,6 +231,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/notebooks/:notebookId/chat', isAuthenticated, async (req: any, res) => {
+    try {
+      const { notebookId } = req.params;
+      
+      const notebook = await storage.getNotebook(notebookId);
+      if (!notebook || notebook.userId !== req.user.claims.sub) {
+        return res.status(404).json({ message: "Notebook not found" });
+      }
+
+      await storage.clearNotebookChatHistory(notebookId);
+      res.json({ message: "Chat history cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing chat history:", error);
+      res.status(500).json({ message: "Failed to clear chat history" });
+    }
+  });
+
   app.post('/api/notebooks/:notebookId/chat', isAuthenticated, async (req: any, res) => {
     try {
       const { notebookId } = req.params;

@@ -98,6 +98,38 @@ export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
     },
   });
 
+  const clearChatMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", `/api/notebooks/${notebookId}/chat`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notebooks", notebookId, "chat"] });
+      toast({
+        title: "Success",
+        description: "Chat history cleared",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to clear chat",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSendMessage = () => {
     if (!message.trim()) return;
     chatMutation.mutate(message);
@@ -127,6 +159,10 @@ export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
     });
   };
 
+  const handleClearChat = () => {
+    clearChatMutation.mutate();
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -150,7 +186,12 @@ export default function ChatInterface({ notebookId }: ChatInterfaceProps) {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleClearChat}
+              disabled={clearChatMutation.isPending}
+            >
               <Fan className="w-4 h-4 mr-1" />
               Clear Chat
             </Button>
