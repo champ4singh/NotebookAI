@@ -61,15 +61,16 @@ export async function generateChatResponse(
   chatHistory: ChatMessage[] = []
 ): Promise<ChatResponse> {
   try {
-    const context = relevantChunks.map(chunk => 
-      `Document: ${chunk.filename}\nContent: ${chunk.content}`
+    // Create a numbered context with document references
+    const context = relevantChunks.map((chunk, index) => 
+      `[${index + 1}] ${chunk.filename}\nContent: ${chunk.content}`
     ).join('\n\n');
 
     const systemPrompt = `You are an AI research assistant helping users analyze and extract insights from their documents. 
 
-Based on the provided document context, answer the user's question accurately and comprehensively. Always cite your sources by referencing the document names when you use information from them.
+Based on the provided document context, answer the user's question accurately and comprehensively. When referencing information from documents, use numbered citations like [1], [2], etc. corresponding to the document numbers provided.
 
-Provide a clear, well-structured response that directly answers the user's question. Do not use markdown code blocks or JSON formatting - just provide a natural, conversational response.
+Provide a clear, well-structured response that directly answers the user's question. Use numbered references [1], [2] etc. instead of document filenames in your response text.
 
 Document Context:
 ${context}`;

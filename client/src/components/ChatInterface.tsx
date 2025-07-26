@@ -259,13 +259,17 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                     {/* Citations */}
                     {chat.metadata && typeof chat.metadata === 'object' && 'citations' in chat.metadata && Array.isArray((chat.metadata as any).citations) && (chat.metadata as any).citations.length > 0 && (
                       <div className="mt-3 p-2 bg-white rounded border-l-4 border-blue-600">
-                        <p className="text-xs text-slate-500 mb-1">Sources:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {((chat.metadata as any).citations as any[]).map((citation: any, index: number) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {citation.filename}
-                            </Badge>
-                          ))}
+                        <p className="text-xs text-slate-500 mb-2">Sources:</p>
+                        <div className="space-y-1">
+                          {((chat.metadata as any).citations as any[]).map((citation: any, index: number) => {
+                            // Create a cleaner title from filename
+                            const title = citation.filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+                            return (
+                              <div key={index} className="text-xs text-slate-600">
+                                <span className="font-medium">[{index + 1}]</span> {title} - {citation.filename}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
