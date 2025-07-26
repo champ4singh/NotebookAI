@@ -61,18 +61,27 @@ export async function generateChatResponse(
   chatHistory: ChatMessage[] = []
 ): Promise<ChatResponse> {
   try {
-    const context = relevantChunks.map(chunk => 
-      `Document: ${chunk.filename}\nContent: ${chunk.content}`
+    // Create numbered document references
+    const documentRefs = relevantChunks.map((chunk, index) => 
+      `[${index + 1}] ${chunk.filename}\nContent: ${chunk.content}`
     ).join('\n\n');
+
+    // Create reference guide for the AI
+    const refGuide = relevantChunks.map((chunk, index) => 
+      `[${index + 1}] = ${chunk.filename}`
+    ).join('\n');
 
     const systemPrompt = `You are an AI research assistant helping users analyze and extract insights from their documents. 
 
-Based on the provided document context, answer the user's question accurately and comprehensively. Always cite your sources by referencing the document names when you use information from them.
+Based on the provided document context, answer the user's question accurately and comprehensively. When referencing information from documents, use the numbered references (e.g., [1], [2], etc.) instead of filenames in your response.
 
-Provide a clear, well-structured response that directly answers the user's question. Do not use markdown code blocks or JSON formatting - just provide a natural, conversational response.
+Reference Guide:
+${refGuide}
+
+Provide a clear, well-structured response that directly answers the user's question. Use the numbered references when citing sources. Do not use markdown code blocks or JSON formatting - just provide a natural, conversational response.
 
 Document Context:
-${context}`;
+${documentRefs}`;
 
     // Convert chat history to a string format for Gemini
     const historyContext = chatHistory.slice(-10).map(msg => 
@@ -96,10 +105,12 @@ Current question: ${userMessage}`;
     // Clean the response text to remove any markdown formatting
     const cleanedContent = responseText.replace(/```json\s*|\s*```/g, '').trim();
 
-    // Generate citations from relevant chunks
-    const citations = relevantChunks.map(chunk => ({
+    // Generate citations with numbered references and document titles
+    const citations = relevantChunks.map((chunk, index) => ({
+      index: index + 1,
       filename: chunk.filename,
-      documentId: chunk.documentId
+      documentId: chunk.documentId,
+      title: chunk.filename.replace(/\.[^/.]+$/, ""), // Remove file extension for title
     }));
 
     return {

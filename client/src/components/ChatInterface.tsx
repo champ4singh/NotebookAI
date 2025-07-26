@@ -260,15 +260,15 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                     {chat.metadata && typeof chat.metadata === 'object' && 'citations' in chat.metadata && Array.isArray((chat.metadata as any).citations) && (chat.metadata as any).citations.length > 0 && (
                       <div className="mt-3 p-2 bg-white rounded border-l-4 border-blue-600">
                         <p className="text-xs text-slate-500 mb-1">Sources:</p>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="space-y-1">
                           {((chat.metadata as any).citations as any[]).map((citation: any, index: number) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {citation.filename}
-                            </Badge>
+                            <div key={index} className="text-xs text-slate-600">
+                              <span className="font-medium">[{citation.index || index + 1}]</span> {citation.title || citation.filename.replace(/\.[^/.]+$/, "")} - {citation.filename}
+                            </div>
                           ))}
                         </div>
                       </div>
-                    )}
+                    )}</div>
                   </div>
                   <div className="flex items-center space-x-3 mt-2">
                     <p className="text-xs text-slate-500">
