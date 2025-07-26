@@ -39,6 +39,7 @@ export interface IStorage {
   // Chat history operations
   getNotebookChatHistory(notebookId: string): Promise<ChatHistory[]>;
   createChatHistory(chatHistory: InsertChatHistory): Promise<ChatHistory>;
+  clearNotebookChatHistory(notebookId: string): Promise<void>;
   
   // Notes operations
   getNotebookNotes(notebookId: string): Promise<Note[]>;
@@ -170,12 +171,11 @@ export class DatabaseStorage implements IStorage {
   async deleteNote(id: string): Promise<void> {
     await db.delete(notes).where(eq(notes.id, id));
   }
+
+  // Clear chat history operations
+  async clearNotebookChatHistory(notebookId: string): Promise<void> {
+    await db.delete(chatHistory).where(eq(chatHistory.notebookId, notebookId));
+  }
 }
 
 export const storage = new DatabaseStorage();
-
-
-
-export async function clearNotebookChatHistory(notebookId: string): Promise<void> {
-  await db.delete(chatHistory).where(eq(chatHistory.notebookId, notebookId));
-}
