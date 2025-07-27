@@ -134,6 +134,98 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
     return plainText.slice(0, 150) + (plainText.length > 150 ? "..." : "");
   };
 
+  const renderMarkdownContent = (content: string) => {
+    const lines = content.split('\n');
+    const elements: JSX.Element[] = [];
+    let key = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Skip empty lines but add spacing
+      if (!line.trim()) {
+        elements.push(<div key={key++} className="h-2"></div>);
+        continue;
+      }
+
+      // Handle headers
+      if (line.match(/^#{1,6}\s/)) {
+        const level = line.match(/^#+/)?.[0].length || 1;
+        const text = line.replace(/^#+\s*/, '').replace(/---$/, '').trim();
+        
+        if (level === 1) {
+          elements.push(
+            <h1 key={key++} className="text-xl font-bold text-slate-800 mb-3 pb-2 border-b border-slate-200">
+              {text}
+            </h1>
+          );
+        } else if (level === 2) {
+          elements.push(
+            <h2 key={key++} className="text-lg font-bold text-slate-700 mb-2 mt-4">
+              {text}
+            </h2>
+          );
+        } else {
+          elements.push(
+            <h3 key={key++} className="text-base font-semibold text-slate-600 mb-2 mt-3">
+              {text}
+            </h3>
+          );
+        }
+      }
+      // Handle bullet points
+      else if (line.match(/^\s*[-•*]\s/)) {
+        const indent = (line.match(/^\s*/)?.[0].length || 0) / 2;
+        const text = line.replace(/^\s*[-•*]\s*/, '');
+        const processed = text
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        
+        elements.push(
+          <div key={key++} className={`flex items-start mb-1 ${indent > 0 ? `ml-${Math.min(indent * 4, 12)}` : ''}`}>
+            <span className="text-blue-600 mr-2 mt-1 text-sm">•</span>
+            <span dangerouslySetInnerHTML={{ __html: processed }} className="text-sm leading-relaxed"></span>
+          </div>
+        );
+      }
+      // Handle numbered lists
+      else if (line.match(/^\s*\d+\.\s/)) {
+        const indent = (line.match(/^\s*/)?.[0].length || 0) / 2;
+        const match = line.match(/^\s*(\d+)\.\s*(.+)/);
+        if (match) {
+          const [, number, text] = match;
+          const processed = text
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+          
+          elements.push(
+            <div key={key++} className={`flex items-start mb-1 ${indent > 0 ? `ml-${Math.min(indent * 4, 12)}` : ''}`}>
+              <span className="text-blue-600 font-semibold mr-2 mt-0.5 text-sm min-w-0">{number}.</span>
+              <span dangerouslySetInnerHTML={{ __html: processed }} className="text-sm leading-relaxed"></span>
+            </div>
+          );
+        }
+      }
+      // Handle horizontal rules
+      else if (line.match(/^---+$/)) {
+        elements.push(<hr key={key++} className="my-4 border-slate-200" />);
+      }
+      // Handle regular paragraphs
+      else {
+        const processed = line
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-sm">$1</code>');
+        
+        elements.push(
+          <p key={key++} className="text-sm leading-relaxed mb-2" dangerouslySetInnerHTML={{ __html: processed }}></p>
+        );
+      }
+    }
+
+    return <div className="space-y-1">{elements}</div>;
+  };
+
   const formatRelativeTime = (date: string) => {
     const now = new Date();
     const noteDate = new Date(date);
