@@ -6,11 +6,11 @@ NotebookAI is an AI-powered document analysis and chat application built with a 
 
 ## Recent Changes
 
+- **Pinecone Vector Database Integration (July 27, 2025)**: Migrated from in-memory vector storage to Pinecone cloud vector database for persistent embeddings. Auto-creates index if not exists, handles document addition/removal with proper embedding management.
+- **Enhanced Citation Tooltips (July 27, 2025)**: Citation tooltips now show actual document chunk content (up to 200 characters) when hovering over [1] references. Fixed fallback logic to ensure tooltips work even when vector store is empty.
 - **Migration to Replit Environment (July 27, 2025)**: Successfully migrated from Replit Agent to standard Replit environment with proper client/server separation, security practices, and PostgreSQL database setup.
 - **Fixed Citation System (July 27, 2025)**: Resolved issue where single documents were showing multiple citations. Now properly groups document chunks and shows only one citation per unique document.
 - **Enhanced Citation System (July 26, 2025)**: Implemented numbered citation references [1], [2] in AI responses with document titles extracted from content. Citations now display as "[1] Document Title - Filename" format.
-- **Document Title Extraction**: Added automatic title extraction from document content during upload and display in document sidebar.
-- **Improved Document Selection**: Enhanced document filtering to work with extracted titles and maintain consistency across vector search and direct document retrieval.
 
 ## User Preferences
 
@@ -40,7 +40,7 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle with schema-first approach
 - **Session Storage**: PostgreSQL-backed sessions using connect-pg-simple
 - **File Storage**: Local filesystem for uploaded documents
-- **Vector Storage**: In-memory vector store for document embeddings (production would use external vector database)
+- **Vector Storage**: Pinecone cloud vector database for persistent document embeddings
 
 ## Key Components
 
@@ -83,6 +83,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Dependencies
 - **Google Gemini API**: Gemini 2.5 Pro for chat, text-embedding-004 for embeddings
+- **Pinecone**: Cloud vector database for persistent document embeddings
 - **Neon Database**: Serverless PostgreSQL hosting
 - **Replit Auth**: Authentication provider with OpenID Connect
 
@@ -116,5 +117,5 @@ Preferred communication style: Simple, everyday language.
 ### Configuration
 - **Database Migrations**: Drizzle migrations in `/migrations` directory
 - **Schema**: Centralized in `/shared/schema.ts` for type safety
-- **Environment**: DATABASE_URL, SESSION_SECRET, GEMINI_API_KEY required
+- **Environment**: DATABASE_URL, SESSION_SECRET, GEMINI_API_KEY, PINECONE_API_KEY required
 - **Build Process**: Dual build (client + server) with shared TypeScript configuration

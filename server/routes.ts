@@ -205,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteDocument(id);
-      vectorStore.removeDocument(id);
+      await vectorStore.removeDocument(id);
 
       res.json({ message: "Document deleted successfully" });
     } catch (error) {
@@ -301,7 +301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // No specific documents selected, use all available
         if (relevantChunks.length === 0) {
           console.log('No relevant chunks found, fetching all notebook documents...');
-          console.log(`Vector store document count: ${vectorStore.getDocumentCount()}`);
+          const documentCount = await vectorStore.getDocumentCount();
+          console.log(`Vector store document count: ${documentCount}`);
           
           const allDocuments = await storage.getNotebookDocuments(notebookId);
           console.log(`Found ${allDocuments.length} total documents in notebook`);
