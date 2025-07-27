@@ -341,7 +341,7 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
 
         {/* Notes List */}
         <div 
-          className="flex-1 overflow-y-auto p-4 space-y-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+          className="flex-1 overflow-y-auto p-4 space-y-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset custom-scrollbar"
           tabIndex={0}
           onKeyDown={(e) => {
             const container = e.currentTarget;

@@ -333,7 +333,7 @@ export default function NoteEditorModal({
 
             {isViewMode ? (
               <div 
-                className="flex-1 p-4 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                className="flex-1 p-4 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset custom-scrollbar"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   const container = e.currentTarget;
