@@ -26,6 +26,7 @@ export interface ChatResponse {
     filename: string;
     title?: string;
     documentId: string;
+    chunks: string[];
   }[];
 }
 
@@ -118,11 +119,12 @@ Current question: ${userMessage}`;
     // Clean the response text to remove any markdown formatting
     const cleanedContent = responseText.replace(/```json\s*|\s*```/g, '').trim();
 
-    // Generate citations from unique documents only
+    // Generate citations from unique documents with their chunks
     const citations = uniqueDocuments.map(doc => ({
       filename: doc.filename,
       title: doc.title,
-      documentId: doc.documentId
+      documentId: doc.documentId,
+      chunks: doc.chunks.map(chunk => chunk.content)
     }));
 
     return {

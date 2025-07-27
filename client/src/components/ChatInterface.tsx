@@ -19,6 +19,7 @@ interface CitationData {
   filename: string;
   title?: string;
   documentId: string;
+  chunks: string[];
 }
 
 // Function to format chat response with better structure and interactive citations
@@ -93,11 +94,22 @@ function formatChatResponse(text: string, citations: CitationData[] = []) {
                         {part}
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
+                    <TooltipContent className="max-w-md max-h-60 overflow-y-auto">
                       {citation ? (
                         <div>
-                          <p className="font-medium">{citation.title || citation.filename}</p>
-                          <p className="text-xs text-gray-500 mt-1">{citation.filename}</p>
+                          <p className="font-medium text-sm mb-2">{citation.title || citation.filename}</p>
+                          <div className="space-y-2">
+                            {citation.chunks && citation.chunks.length > 0 ? (
+                              citation.chunks.map((chunk, chunkIndex) => (
+                                <div key={chunkIndex} className="text-xs text-gray-700 bg-gray-50 p-2 rounded border-l-2 border-blue-400">
+                                  {chunk.length > 200 ? `${chunk.substring(0, 200)}...` : chunk}
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs text-gray-500">No content available</p>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-2 border-t pt-1">{citation.filename}</p>
                         </div>
                       ) : (
                         <p>Citation reference</p>
@@ -131,11 +143,22 @@ function formatChatResponse(text: string, citations: CitationData[] = []) {
                           {part}
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
+                      <TooltipContent className="max-w-md max-h-60 overflow-y-auto">
                         {citation ? (
                           <div>
-                            <p className="font-medium">{citation.title || citation.filename}</p>
-                            <p className="text-xs text-gray-500 mt-1">{citation.filename}</p>
+                            <p className="font-medium text-sm mb-2">{citation.title || citation.filename}</p>
+                            <div className="space-y-2">
+                              {citation.chunks && citation.chunks.length > 0 ? (
+                                citation.chunks.map((chunk, chunkIndex) => (
+                                  <div key={chunkIndex} className="text-xs text-gray-700 bg-gray-50 p-2 rounded border-l-2 border-blue-400">
+                                    {chunk.length > 200 ? `${chunk.substring(0, 200)}...` : chunk}
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-xs text-gray-500">No content available</p>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2 border-t pt-1">{citation.filename}</p>
                           </div>
                         ) : (
                           <p>Citation reference</p>
