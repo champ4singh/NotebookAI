@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -14,8 +15,14 @@ interface ChatInterfaceProps {
   selectedDocuments?: string[];
 }
 
-// Function to format chat response with better structure
-function formatChatResponse(text: string) {
+interface CitationData {
+  filename: string;
+  title?: string;
+  documentId: string;
+}
+
+// Function to format chat response with better structure and interactive citations
+function formatChatResponse(text: string, citations: CitationData[] = []) {
   if (!text) return null;
   
   // Split text into paragraphs and lines
@@ -74,15 +81,34 @@ function formatChatResponse(text: string) {
       const parts = line.split(/(\[\d+\])/);
       formattedElements.push(
         <div key={key++} className="mb-2">
-          {parts.map((part, index) => 
-            /\[\d+\]/.test(part) ? (
-              <span key={index} className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mr-1">
-                {part}
-              </span>
-            ) : (
-              <span key={index}>{part}</span>
-            )
-          )}
+          {parts.map((part, index) => {
+            if (/\[\d+\]/.test(part)) {
+              const citationNum = parseInt(part.replace(/[\[\]]/g, ''));
+              const citation = citations[citationNum - 1];
+              return (
+                <TooltipProvider key={index}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mr-1 cursor-help">
+                        {part}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      {citation ? (
+                        <div>
+                          <p className="font-medium">{citation.title || citation.filename}</p>
+                          <p className="text-xs text-gray-500 mt-1">{citation.filename}</p>
+                        </div>
+                      ) : (
+                        <p>Citation reference</p>
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            }
+            return <span key={index}>{part}</span>;
+          })}
         </div>
       );
     }
@@ -93,15 +119,34 @@ function formatChatResponse(text: string) {
         const parts = line.split(/(\[\d+\])/);
         formattedElements.push(
           <p key={key++} className="mb-2 leading-relaxed">
-            {parts.map((part, index) => 
-              /\[\d+\]/.test(part) ? (
-                <span key={index} className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mx-0.5">
-                  {part}
-                </span>
-              ) : (
-                <span key={index}>{part}</span>
-              )
-            )}
+            {parts.map((part, index) => {
+              if (/\[\d+\]/.test(part)) {
+                const citationNum = parseInt(part.replace(/[\[\]]/g, ''));
+                const citation = citations[citationNum - 1];
+                return (
+                  <TooltipProvider key={index}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mx-0.5 cursor-help">
+                          {part}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        {citation ? (
+                          <div>
+                            <p className="font-medium">{citation.title || citation.filename}</p>
+                            <p className="text-xs text-gray-500 mt-1">{citation.filename}</p>
+                          </div>
+                        ) : (
+                          <p>Citation reference</p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              }
+              return <span key={index}>{part}</span>;
+            })}
           </p>
         );
       } else {
@@ -358,7 +403,12 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                 <div className="flex-1">
                   <div className="bg-slate-50 rounded-lg p-4">
                     <div className="text-sm text-slate-700 prose prose-sm max-w-none">
-                      {formatChatResponse(chat.aiResponse as string) as React.ReactNode}
+                      {formatChatResponse(
+                        chat.aiResponse as string, 
+                        chat.metadata && typeof chat.metadata === 'object' && 'citations' in chat.metadata 
+                          ? (chat.metadata as any).citations as CitationData[]
+                          : []
+                      ) as React.ReactNode}
                     </div>
 
                     {/* Citations */}
