@@ -152,6 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post('/api/notebooks/:notebookId/documents', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    let filePath: string | null = null;
     try {
       const { notebookId } = req.params;
       const notebook = await storage.getNotebook(notebookId);
@@ -164,7 +165,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
+      filePath = req.file.path;
+      console.log(`Processing document: ${req.file.originalname} (${req.file.size} bytes)`);
+      
       const { content, chunks, title } = await processDocument(req.file.path, req.file.originalname);
+      console.log(`Document processed successfully: ${content.length} characters, ${chunks.length} chunks`);
       
       const documentData = {
         notebookId,
@@ -176,17 +181,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const document = await storage.createDocument(documentData);
+      console.log(`Document saved to database: ${document.id}`);
       
-      // Add to vector store for semantic search
-      await vectorStore.addDocument(document.id, document.filename, chunks, title);
+      // Add to vector store for semantic search (non-blocking)
+      // Process this asynchronously to avoid database timeout
+      setImmediate(async () => {
+        try {
+          console.log(`Adding document ${document.id} to vector store...`);
+          await vectorStore.addDocument(document.id, document.filename, chunks, title);
+          console.log(`Document ${document.id} successfully added to vector store`);
+        } catch (vectorError) {
+          console.error(`Failed to add document ${document.id} to vector store:`, vectorError);
+          // Don't fail the entire operation if vector store fails
+        }
+      });
 
       // Clean up uploaded file
       await fs.unlink(req.file.path);
+      filePath = null; // Mark as cleaned up
 
       res.json(document);
     } catch (error) {
       console.error("Error uploading document:", error);
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to upload document" });
+      
+      // Clean up uploaded file if it exists and wasn't cleaned up yet
+      if (filePath) {
+        try {
+          await fs.unlink(filePath);
+        } catch (unlinkError) {
+          console.error("Error cleaning up uploaded file:", unlinkError);
+        }
+      }
+      
+      // Handle specific database errors
+      if (error instanceof Error) {
+        if (error.message.includes('terminating connection') || 
+            error.message.includes('administrator command') ||
+            error.message.includes('connection')) {
+          return res.status(503).json({ 
+            message: "Database connection issue. Please try uploading the document again." 
+          });
+        }
+        return res.status(500).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: "Failed to upload document" });
     }
   });
 

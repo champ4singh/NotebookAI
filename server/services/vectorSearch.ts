@@ -33,7 +33,15 @@ class VectorStore {
   async addDocument(documentId: string, filename: string, chunks: string[], title?: string): Promise<void> {
     try {
       await this.ensureInitialized();
-      return await pineconeService.addDocument(documentId, filename, chunks, title);
+      
+      // Add timeout to prevent hanging operations
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Vector store operation timed out')), 30000); // 30 second timeout
+      });
+      
+      const addPromise = pineconeService.addDocument(documentId, filename, chunks, title);
+      
+      return await Promise.race([addPromise, timeoutPromise]);
     } catch (error) {
       console.error('Error adding document to vector store:', error);
       // Don't throw - allow the application to continue without vector storage

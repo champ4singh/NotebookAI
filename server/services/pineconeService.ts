@@ -144,26 +144,32 @@ Visit: https://app.pinecone.io/
       
       const vectors: PineconeVector[] = [];
       
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        try {
-          const embedding = await generateEmbedding(chunk);
-          
-          vectors.push({
-            id: `${documentId}_${i}`,
-            values: embedding,
-            metadata: {
-              documentId,
-              filename,
-              title,
-              content: chunk,
-              chunkIndex: i
-            }
-          });
-          
-          console.log(`Prepared chunk ${i} for document ${documentId}`);
-        } catch (error) {
-          console.error(`Error generating embedding for chunk ${i} of document ${documentId}:`, error);
+      // Process chunks in smaller batches to avoid timeouts
+      const batchSize = 5;
+      for (let batchStart = 0; batchStart < chunks.length; batchStart += batchSize) {
+        const batch = chunks.slice(batchStart, Math.min(batchStart + batchSize, chunks.length));
+        
+        for (let i = 0; i < batch.length; i++) {
+          const chunkIndex = batchStart + i;
+          const chunk = batch[i];
+          try {
+            console.log(`Prepared chunk ${chunkIndex} for document ${documentId}`);
+            const embedding = await generateEmbedding(chunk);
+            
+            vectors.push({
+              id: `${documentId}_${chunkIndex}`,
+              values: embedding,
+              metadata: {
+                documentId,
+                filename,
+                title,
+                content: chunk,
+                chunkIndex: chunkIndex
+              }
+            });
+          } catch (error) {
+            console.error(`Error generating embedding for chunk ${chunkIndex} of document ${documentId}:`, error);
+          }
         }
       }
 
