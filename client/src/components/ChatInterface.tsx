@@ -358,7 +358,7 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                 <div className="flex-1">
                   <div className="bg-slate-50 rounded-lg p-4">
                     <div className="text-sm text-slate-700 prose prose-sm max-w-none">
-                      {formatChatResponse(chat.aiResponse as string)}
+                      {formatChatResponse(chat.aiResponse as string) as React.ReactNode}
                     </div>
 
                     {/* Citations */}

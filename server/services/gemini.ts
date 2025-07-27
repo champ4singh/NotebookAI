@@ -84,13 +84,16 @@ export async function generateChatResponse(
 
     const systemPrompt = `You are an AI research assistant helping users analyze and extract insights from their documents. 
 
-Based on the provided document context, answer the user's question accurately and comprehensively. When referencing information from documents, use numbered citations like [1], [2], etc. corresponding to the document numbers provided.
+Based on the provided document context, answer the user's question accurately and comprehensively. When referencing information from documents, use ONLY the numbered citations that correspond to unique documents.
 
-Provide a clear, well-structured response that directly answers the user's question. Use numbered references [1], [2] etc. instead of document filenames in your response text.
+CRITICAL RULES FOR CITATIONS:
+- Only use [1] if there is information from document 1
+- Only use [2] if there is information from document 2, etc.
+- NEVER use multiple citation numbers for the same document
+- If all information comes from one document, only use [1] throughout your response
+- If information comes from multiple unique documents, use [1], [2], etc. for each unique document
 
-Important: Each number [1], [2], etc. represents a unique document, not individual sections within documents.
-
-Document Context:
+Document Context (each number represents ONE unique document):
 ${context}`;
 
     // Convert chat history to a string format for Gemini
