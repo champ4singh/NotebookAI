@@ -7,6 +7,7 @@ NotebookAI is an AI-powered document analysis and chat application built with a 
 ## Recent Changes
 
 - **Migration to Replit Environment (July 27, 2025)**: Successfully migrated from Replit Agent to standard Replit environment with proper client/server separation, security practices, and PostgreSQL database setup.
+- **Fixed Citation System (July 27, 2025)**: Resolved issue where single documents were showing multiple citations. Now properly groups document chunks and shows only one citation per unique document.
 - **Enhanced Citation System (July 26, 2025)**: Implemented numbered citation references [1], [2] in AI responses with document titles extracted from content. Citations now display as "[1] Document Title - Filename" format.
 - **Document Title Extraction**: Added automatic title extraction from document content during upload and display in document sidebar.
 - **Improved Document Selection**: Enhanced document filtering to work with extracted titles and maintain consistency across vector search and direct document retrieval.

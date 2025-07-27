@@ -63,16 +63,32 @@ export async function generateChatResponse(
   chatHistory: ChatMessage[] = []
 ): Promise<ChatResponse> {
   try {
-    // Create a numbered context with document references
-    const context = relevantChunks.map((chunk, index) => 
-      `[${index + 1}] ${chunk.filename}\nContent: ${chunk.content}`
-    ).join('\n\n');
+    // Get unique documents from chunks
+    const uniqueDocuments = Array.from(
+      new Map(relevantChunks.map(chunk => [
+        chunk.documentId, 
+        {
+          filename: chunk.filename,
+          title: chunk.title || chunk.filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "),
+          documentId: chunk.documentId,
+          chunks: relevantChunks.filter(c => c.documentId === chunk.documentId)
+        }
+      ])).values()
+    );
+
+    // Create a numbered context with document references (one number per unique document)
+    const context = uniqueDocuments.map((doc, index) => {
+      const combinedContent = doc.chunks.map(chunk => chunk.content).join('\n\n');
+      return `[${index + 1}] ${doc.filename}\nContent: ${combinedContent}`;
+    }).join('\n\n');
 
     const systemPrompt = `You are an AI research assistant helping users analyze and extract insights from their documents. 
 
 Based on the provided document context, answer the user's question accurately and comprehensively. When referencing information from documents, use numbered citations like [1], [2], etc. corresponding to the document numbers provided.
 
 Provide a clear, well-structured response that directly answers the user's question. Use numbered references [1], [2] etc. instead of document filenames in your response text.
+
+Important: Each number [1], [2], etc. represents a unique document, not individual sections within documents.
 
 Document Context:
 ${context}`;
@@ -99,11 +115,11 @@ Current question: ${userMessage}`;
     // Clean the response text to remove any markdown formatting
     const cleanedContent = responseText.replace(/```json\s*|\s*```/g, '').trim();
 
-    // Generate citations from relevant chunks
-    const citations = relevantChunks.map(chunk => ({
-      filename: chunk.filename,
-      title: chunk.title || chunk.filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "),
-      documentId: chunk.documentId
+    // Generate citations from unique documents only
+    const citations = uniqueDocuments.map(doc => ({
+      filename: doc.filename,
+      title: doc.title,
+      documentId: doc.documentId
     }));
 
     return {
