@@ -340,7 +340,20 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
         </div>
 
         {/* Notes List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div 
+          className="flex-1 overflow-y-auto p-4 space-y-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            const container = e.currentTarget;
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              container.scrollTop += 50;
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              container.scrollTop -= 50;
+            }
+          }}
+        >
           {isLoading ? (
             <div className="text-center py-8">
               <p className="text-slate-500">Loading notes...</p>

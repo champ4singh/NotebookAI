@@ -332,7 +332,20 @@ export default function NoteEditorModal({
             </div>
 
             {isViewMode ? (
-              <div className="flex-1 p-4 overflow-y-auto">
+              <div 
+                className="flex-1 p-4 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  const container = e.currentTarget;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    container.scrollTop += 50;
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    container.scrollTop -= 50;
+                  }
+                }}
+              >
                 {renderMarkdownContent(content)}
               </div>
             ) : (
