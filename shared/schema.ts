@@ -71,6 +71,7 @@ export const notes = pgTable("notes", {
   title: varchar("title").notNull(),
   content: text("content").notNull(),
   sourceType: varchar("source_type").notNull(), // 'manual' | 'ai_generated'
+  aiContentType: varchar("ai_content_type"), // 'study_guide' | 'briefing_doc' | 'faq' | 'timeline' | null for manual notes
   linkedChatId: varchar("linked_chat_id").references(() => chatHistory.id),
   createdAt: timestamp("created_at").defaultNow(),
 });

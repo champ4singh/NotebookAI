@@ -440,6 +440,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Content Generation route
+  app.post('/api/notebooks/:notebookId/generate-ai-content', isAuthenticated, async (req: any, res) => {
+    try {
+      const { notebookId } = req.params;
+      const { contentType } = req.body;
+      
+      const notebook = await storage.getNotebook(notebookId);
+      if (!notebook || notebook.userId !== req.user.claims.sub) {
+        return res.status(404).json({ message: "Notebook not found" });
+      }
+
+      // Get all documents in the notebook for content generation
+      const documents = await storage.getNotebookDocuments(notebookId);
+      
+      if (documents.length === 0) {
+        return res.status(400).json({ message: "No documents found in notebook" });
+      }
+
+      // Combine document content for AI processing
+      const combinedContent = documents.map(doc => 
+        `**${doc.filename}${doc.title ? ` (${doc.title})` : ''}**\n\n${doc.content}`
+      ).join('\n\n---\n\n');
+
+      // Generate appropriate prompt based on content type
+      let prompt = '';
+      let title = '';
+      
+      switch (contentType) {
+        case 'study_guide':
+          prompt = `Generate a comprehensive study guide summarizing the key concepts, definitions, and sections from the provided documents. Organize it by topic or section and include bullet points for clarity. Focus on the most important information that someone would need to understand and retain from these materials.
+
+Documents:
+${combinedContent}`;
+          title = 'Study Guide';
+          break;
+          
+        case 'briefing_doc':
+          prompt = `Write a briefing document summarizing the key points, insights, and implications of the provided documents in a clear and concise format for decision-makers. Focus on actionable insights, main findings, and strategic implications.
+
+Documents:
+${combinedContent}`;
+          title = 'Briefing Document';
+          break;
+          
+        case 'faq':
+          prompt = `Create a Frequently Asked Questions (FAQ) section based on the provided documents, highlighting common questions a reader might have along with clear, accurate answers. Focus on addressing potential confusion and providing helpful clarifications.
+
+Documents:
+${combinedContent}`;
+          title = 'FAQ';
+          break;
+          
+        case 'timeline':
+          prompt = `Extract all events, dates, and milestones mentioned in the provided documents and create a chronological timeline including dates (if available) and a short description of each event. If specific dates aren't available, organize by sequence or relative timing.
+
+Documents:
+${combinedContent}`;
+          title = 'Timeline';
+          break;
+          
+        default:
+          return res.status(400).json({ message: "Invalid content type" });
+      }
+
+      // Use generateChatResponse to create the AI content
+      const { content: aiContent } = await generateChatResponse(
+        prompt,
+        documents.flatMap(doc => [{
+          content: doc.content,
+          filename: doc.filename,
+          title: doc.title || undefined,
+          documentId: doc.id,
+          similarity: 1.0
+        }]),
+        []
+      );
+
+      // Create the note with AI-generated content
+      const noteData = {
+        notebookId,
+        title,
+        content: aiContent,
+        sourceType: 'ai_generated' as const,
+        aiContentType: contentType,
+        linkedChatId: null
+      };
+
+      const note = await storage.createNote(noteData);
+      res.json({ ...note, contentType });
+    } catch (error) {
+      console.error("Error generating AI content:", error);
+      res.status(500).json({ message: "Failed to generate AI content" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

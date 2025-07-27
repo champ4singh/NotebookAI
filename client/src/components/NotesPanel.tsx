@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Bot, User, Edit, Trash2, Download, Link } from "lucide-react";
+import { Plus, Bot, User, Edit, Trash2, Download, Link, GraduationCap, FileText, HelpCircle, Clock, MoreVertical } from "lucide-react";
 import NoteEditorModal from "./NoteEditorModal";
 import type { Note } from "@shared/schema";
 
@@ -17,6 +17,7 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
   const { toast } = useToast();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [generatingContent, setGeneratingContent] = useState<string | null>(null);
 
   const { data: notes = [], isLoading } = useQuery<Note[]>({
     queryKey: ["/api/notebooks", notebookId, "notes"],
@@ -53,9 +54,50 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
     },
   });
 
+  const generateAIContentMutation = useMutation({
+    mutationFn: async ({ type, notebookId }: { type: string; notebookId: string }) => {
+      const response = await apiRequest("POST", `/api/notebooks/${notebookId}/generate-ai-content`, {
+        contentType: type,
+      });
+      return response;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notebooks", notebookId, "notes"] });
+      setGeneratingContent(null);
+      toast({
+        title: "Success",
+        description: `${data.contentType.replace('_', ' ')} generated successfully`,
+      });
+    },
+    onError: (error) => {
+      setGeneratingContent(null);
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to generate AI content",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateNote = () => {
     setSelectedNote(null);
     setIsEditorOpen(true);
+  };
+
+  const handleGenerateAIContent = (type: string) => {
+    setGeneratingContent(type);
+    generateAIContentMutation.mutate({ type, notebookId });
   };
 
   const handleEditNote = (note: Note) => {
@@ -97,20 +139,73 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-slate-900">Notes</h2>
-            <Badge variant="secondary" className="text-xs">
-              {notes?.length || 0} notes
-            </Badge>
+            <MoreVertical className="w-4 h-4 text-slate-500" />
           </div>
           
-          {/* Create Note Button */}
+          {/* Add Note Button */}
           <Button 
             variant="outline"
-            className="w-full"
+            className="w-full mb-3"
             onClick={handleCreateNote}
           >
             <Plus className="w-4 h-4 mr-2" />
-            New Note
+            Add note
           </Button>
+
+          {/* AI Content Generation Buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center justify-start p-2 h-auto"
+              onClick={() => handleGenerateAIContent('study_guide')}
+              disabled={generatingContent === 'study_guide'}
+            >
+              <GraduationCap className="w-4 h-4 mr-2" />
+              <span className="text-xs">Study guide</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center justify-start p-2 h-auto"
+              onClick={() => handleGenerateAIContent('briefing_doc')}
+              disabled={generatingContent === 'briefing_doc'}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              <span className="text-xs">Briefing doc</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center justify-start p-2 h-auto"
+              onClick={() => handleGenerateAIContent('faq')}
+              disabled={generatingContent === 'faq'}
+            >
+              <HelpCircle className="w-4 h-4 mr-2" />
+              <span className="text-xs">FAQ</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center justify-start p-2 h-auto"
+              onClick={() => handleGenerateAIContent('timeline')}
+              disabled={generatingContent === 'timeline'}
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              <span className="text-xs">Timeline</span>
+            </Button>
+          </div>
+
+          {generatingContent && (
+            <div className="mt-3 text-center">
+              <p className="text-xs text-slate-500">
+                Generating {generatingContent.replace('_', ' ')}...
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Notes List */}
@@ -134,13 +229,24 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
                         : 'bg-slate-400'
                     }`}>
                       {note.sourceType === 'ai_generated' ? (
+                        note.aiContentType === 'study_guide' ? <GraduationCap className="w-3 h-3 text-white" /> :
+                        note.aiContentType === 'briefing_doc' ? <FileText className="w-3 h-3 text-white" /> :
+                        note.aiContentType === 'faq' ? <HelpCircle className="w-3 h-3 text-white" /> :
+                        note.aiContentType === 'timeline' ? <Clock className="w-3 h-3 text-white" /> :
                         <Bot className="w-3 h-3 text-white" />
                       ) : (
                         <User className="w-3 h-3 text-white" />
                       )}
                     </div>
                     <span className="text-xs text-slate-500">
-                      {note.sourceType === 'ai_generated' ? 'AI Generated' : 'Manual Note'}
+                      {note.sourceType === 'ai_generated' ? 
+                        note.aiContentType === 'study_guide' ? 'Study Guide' :
+                        note.aiContentType === 'briefing_doc' ? 'Briefing Doc' :
+                        note.aiContentType === 'faq' ? 'FAQ' :
+                        note.aiContentType === 'timeline' ? 'Timeline' :
+                        'AI Generated'
+                        : 'Manual Note'
+                      }
                     </span>
                   </div>
                   <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
