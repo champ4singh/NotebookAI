@@ -483,15 +483,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/notebooks/:notebookId/generate-ai-content', isAuthenticated, async (req: any, res) => {
     try {
       const { notebookId } = req.params;
-      const { contentType } = req.body;
+      const { contentType, selectedDocuments } = req.body;
       
       const notebook = await storage.getNotebook(notebookId);
       if (!notebook || notebook.userId !== req.user.claims.sub) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
-      // Get all documents in the notebook for content generation
-      const documents = await storage.getNotebookDocuments(notebookId);
+      // Get documents for content generation - either selected documents or all documents
+      let documents = await storage.getNotebookDocuments(notebookId);
+      
+      // If specific documents are selected, filter to only those
+      if (selectedDocuments && selectedDocuments.length > 0) {
+        documents = documents.filter(doc => selectedDocuments.includes(doc.id));
+        console.log(`Using ${documents.length} selected documents for AI content generation: ${selectedDocuments.join(', ')}`);
+      } else {
+        console.log(`Using all ${documents.length} documents for AI content generation`);
+      }
       
       if (documents.length === 0) {
         return res.status(400).json({ message: "No documents found in notebook" });

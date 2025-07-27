@@ -101,7 +101,7 @@ export default function Notebook() {
           notebookId={id!} 
           selectedDocuments={selectedDocuments}
         />
-        <NotesPanel notebookId={id!} />
+        <NotesPanel notebookId={id!} selectedDocuments={selectedDocuments} />
       </div>
     </div>
   );

@@ -11,9 +11,10 @@ import type { Note } from "@shared/schema";
 
 interface NotesPanelProps {
   notebookId: string;
+  selectedDocuments?: string[];
 }
 
-export default function NotesPanel({ notebookId }: NotesPanelProps) {
+export default function NotesPanel({ notebookId, selectedDocuments = [] }: NotesPanelProps) {
   const { toast } = useToast();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -56,9 +57,10 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
   });
 
   const generateAIContentMutation = useMutation({
-    mutationFn: async ({ type, notebookId }: { type: string; notebookId: string }) => {
+    mutationFn: async ({ type, notebookId, selectedDocuments }: { type: string; notebookId: string; selectedDocuments: string[] }) => {
       const response = await apiRequest("POST", `/api/notebooks/${notebookId}/generate-ai-content`, {
         contentType: type,
+        selectedDocuments: selectedDocuments.length > 0 ? selectedDocuments : undefined,
       });
       return response;
     },
@@ -105,7 +107,7 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
 
   const handleGenerateAIContent = (type: string) => {
     setGeneratingContent(type);
-    generateAIContentMutation.mutate({ type, notebookId });
+    generateAIContentMutation.mutate({ type, notebookId, selectedDocuments });
   };
 
   const handleEditNote = (note: Note) => {
