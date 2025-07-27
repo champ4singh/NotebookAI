@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,8 +22,55 @@ interface CitationData {
   chunks: string[];
 }
 
+// Helper function to process text with citations
+function processTextWithCitations(text: string, citations: CitationData[], baseKey: string = ''): React.ReactNode {
+  if (/\[\d+\]/.test(text)) {
+    const parts = text.split(/(\[\d+\])/);
+    return parts.map((part, index) => {
+      if (/\[\d+\]/.test(part)) {
+        const citationNum = parseInt(part.replace(/[\[\]]/g, ''));
+        const citation = citations[citationNum - 1];
+        return (
+          <TooltipProvider key={`${baseKey}-${index}`}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mx-0.5 cursor-help">
+                  {part}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md max-h-60 overflow-y-auto">
+                {citation ? (
+                  <div>
+                    <p className="font-medium text-sm mb-2">{citation.title || citation.filename}</p>
+                    <div className="space-y-2">
+                      {citation.chunks && citation.chunks.length > 0 ? (
+                        citation.chunks.map((chunk, chunkIndex) => (
+                          <div key={chunkIndex} className="text-xs text-gray-700 bg-gray-50 p-2 rounded border-l-2 border-blue-400">
+                            {chunk.length > 200 ? `${chunk.substring(0, 200)}...` : chunk}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-gray-500">No content available</p>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2 border-t pt-1">{citation.filename}</p>
+                  </div>
+                ) : (
+                  <p>Citation reference</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+      return <span key={`${baseKey}-${index}`}>{part}</span>;
+    });
+  }
+  return text;
+}
+
 // Function to format chat response with better structure and interactive citations
-function formatChatResponse(text: string, citations: CitationData[] = []) {
+function formatChatResponse(text: string, citations: CitationData[] = []): React.ReactNode {
   if (!text) return null;
   
   // Split text into paragraphs and lines
@@ -44,28 +91,31 @@ function formatChatResponse(text: string, citations: CitationData[] = []) {
     
     // Handle numbered lists (1. 2. 3. etc.)
     if (/^\d+\.\s/.test(line)) {
+      const listContent = line.replace(/^\d+\.\s*/, '');
       formattedElements.push(
         <div key={key++} className="ml-4 mb-2">
           <span className="font-medium text-blue-700">{line.match(/^\d+\./)?.[0]}</span>
-          <span className="ml-2">{line.replace(/^\d+\.\s*/, '')}</span>
+          <span className="ml-2">{processTextWithCitations(listContent, citations, `list-${key}`)}</span>
         </div>
       );
     }
     // Handle bullet points (- or • or *)
     else if (/^[-•*]\s/.test(line)) {
+      const bulletContent = line.replace(/^[-•*]\s*/, '');
       formattedElements.push(
         <div key={key++} className="ml-4 mb-1 flex items-start">
           <span className="text-blue-600 mr-2 mt-1">•</span>
-          <span>{line.replace(/^[-•*]\s*/, '')}</span>
+          <span>{processTextWithCitations(bulletContent, citations, `bullet-${key}`)}</span>
         </div>
       );
     }
     // Handle sub-bullet points (indented)
     else if (/^\s+[-•*]\s/.test(line)) {
+      const subBulletContent = line.replace(/^\s*[-•*]\s*/, '');
       formattedElements.push(
         <div key={key++} className="ml-8 mb-1 flex items-start">
           <span className="text-slate-400 mr-2 mt-1">◦</span>
-          <span>{line.replace(/^\s*[-•*]\s*/, '')}</span>
+          <span>{processTextWithCitations(subBulletContent, citations, `subbullet-${key}`)}</span>
         </div>
       );
     }
@@ -73,112 +123,17 @@ function formatChatResponse(text: string, citations: CitationData[] = []) {
     else if (line.endsWith(':') && line.length < 80) {
       formattedElements.push(
         <div key={key++} className="font-semibold text-slate-800 mt-3 mb-2">
-          {line}
+          {processTextWithCitations(line, citations, `heading-${key}`)}
         </div>
       );
     }
-    // Handle citation references [1], [2], etc.
-    else if (/\[\d+\]/.test(line)) {
-      const parts = line.split(/(\[\d+\])/);
-      formattedElements.push(
-        <div key={key++} className="mb-2">
-          {parts.map((part, index) => {
-            if (/\[\d+\]/.test(part)) {
-              const citationNum = parseInt(part.replace(/[\[\]]/g, ''));
-              const citation = citations[citationNum - 1];
-              return (
-                <TooltipProvider key={index}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mr-1 cursor-help">
-                        {part}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-md max-h-60 overflow-y-auto">
-                      {citation ? (
-                        <div>
-                          <p className="font-medium text-sm mb-2">{citation.title || citation.filename}</p>
-                          <div className="space-y-2">
-                            {citation.chunks && citation.chunks.length > 0 ? (
-                              citation.chunks.map((chunk, chunkIndex) => (
-                                <div key={chunkIndex} className="text-xs text-gray-700 bg-gray-50 p-2 rounded border-l-2 border-blue-400">
-                                  {chunk.length > 200 ? `${chunk.substring(0, 200)}...` : chunk}
-                                </div>
-                              ))
-                            ) : (
-                              <p className="text-xs text-gray-500">No content available</p>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-400 mt-2 border-t pt-1">{citation.filename}</p>
-                        </div>
-                      ) : (
-                        <p>Citation reference</p>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              );
-            }
-            return <span key={index}>{part}</span>;
-          })}
-        </div>
-      );
-    }
-    // Regular paragraphs
+    // Regular paragraphs - handle all other content
     else {
-      // Check if this line contains citation references and format them
-      if (/\[\d+\]/.test(line)) {
-        const parts = line.split(/(\[\d+\])/);
-        formattedElements.push(
-          <p key={key++} className="mb-2 leading-relaxed">
-            {parts.map((part, index) => {
-              if (/\[\d+\]/.test(part)) {
-                const citationNum = parseInt(part.replace(/[\[\]]/g, ''));
-                const citation = citations[citationNum - 1];
-                return (
-                  <TooltipProvider key={index}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs font-medium mx-0.5 cursor-help">
-                          {part}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md max-h-60 overflow-y-auto">
-                        {citation ? (
-                          <div>
-                            <p className="font-medium text-sm mb-2">{citation.title || citation.filename}</p>
-                            <div className="space-y-2">
-                              {citation.chunks && citation.chunks.length > 0 ? (
-                                citation.chunks.map((chunk, chunkIndex) => (
-                                  <div key={chunkIndex} className="text-xs text-gray-700 bg-gray-50 p-2 rounded border-l-2 border-blue-400">
-                                    {chunk.length > 200 ? `${chunk.substring(0, 200)}...` : chunk}
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-xs text-gray-500">No content available</p>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-400 mt-2 border-t pt-1">{citation.filename}</p>
-                          </div>
-                        ) : (
-                          <p>Citation reference</p>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                );
-              }
-              return <span key={index}>{part}</span>;
-            })}
-          </p>
-        );
-      } else {
-        formattedElements.push(
-          <p key={key++} className="mb-2 leading-relaxed">
-            {line}
-          </p>
-        );
-      }
+      formattedElements.push(
+        <p key={key++} className="mb-2 leading-relaxed">
+          {processTextWithCitations(line, citations, `para-${key}`)}
+        </p>
+      );
     }
   }
   
@@ -431,7 +386,7 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
                         chat.metadata && typeof chat.metadata === 'object' && 'citations' in chat.metadata 
                           ? (chat.metadata as any).citations as CitationData[]
                           : []
-                      ) as React.ReactNode}
+                      )}
                     </div>
 
                     {/* Citations */}
