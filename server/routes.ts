@@ -543,6 +543,9 @@ ${combinedContent}`;
       }
 
       // Use generateChatResponse to create the AI content
+      console.log(`Generating AI content for type: ${contentType}`);
+      console.log(`Processing ${documents.length} documents with total content length: ${combinedContent.length} characters`);
+      
       const { content: aiContent } = await generateChatResponse(
         prompt,
         documents.flatMap(doc => [{
@@ -554,6 +557,8 @@ ${combinedContent}`;
         }]),
         []
       );
+      
+      console.log(`Generated AI content length: ${aiContent.length} characters`);
 
       // Create the note with AI-generated content
       const noteData = {

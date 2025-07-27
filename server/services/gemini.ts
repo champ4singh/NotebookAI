@@ -114,10 +114,17 @@ ${historyContext}
 
 Current question: ${userMessage}`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-001",
+    // Add timeout protection for Gemini API calls
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Gemini chat response timeout')), 30000); // 30 second timeout
+    });
+    
+    const chatPromise = ai.models.generateContent({
+      model: "gemini-2.0-flash-exp",
       contents: fullPrompt,
     });
+
+    const response = await Promise.race([chatPromise, timeoutPromise]);
 
     const responseText = response.text || "";
 
@@ -136,9 +143,25 @@ Current question: ${userMessage}`;
       content: cleanedContent || "I apologize, but I couldn't generate a proper response.",
       citations: citations
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating chat response:", error);
-    throw new Error("Failed to generate AI response");
+    console.error("Error details:", {
+      message: error?.message,
+      status: error?.status,
+      code: error?.code
+    });
+    
+    // Provide more specific error messages
+    const errorMessage = error?.message || 'Unknown error';
+    if (errorMessage.includes('timeout')) {
+      throw new Error("AI response generation timed out. Please try again with a shorter prompt.");
+    } else if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
+      throw new Error("AI service quota exceeded. Please try again later.");
+    } else if (errorMessage.includes('authentication') || errorMessage.includes('key')) {
+      throw new Error("AI service authentication failed. Please check API key configuration.");
+    } else {
+      throw new Error(`Failed to generate AI response: ${errorMessage}`);
+    }
   }
 }
 
