@@ -119,8 +119,18 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
   };
 
   const getContentPreview = (content: string) => {
-    // Strip HTML tags and get plain text preview
-    const plainText = content.replace(/<[^>]*>/g, '');
+    // Strip markdown formatting and get plain text preview
+    const plainText = content
+      .replace(/^#{1,6}\s+/gm, '') // Remove headers
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+      .replace(/\*([^*]+)\*/g, '$1') // Remove italic
+      .replace(/^[-*+]\s+/gm, '') // Remove bullet points
+      .replace(/^\d+\.\s+/gm, '') // Remove numbered lists
+      .replace(/^>\s+/gm, '') // Remove blockquotes
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links
+      .replace(/`([^`]+)`/g, '$1') // Remove inline code
+      .replace(/\n+/g, ' ') // Replace line breaks with spaces
+      .trim();
     return plainText.slice(0, 150) + (plainText.length > 150 ? "..." : "");
   };
 

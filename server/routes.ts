@@ -9,6 +9,7 @@ import { processDocument, formatFileSize } from "./services/documentProcessor";
 import { vectorStore } from "./services/vectorSearch";
 import { vectorWorker } from "./services/vectorWorker";
 import { generateChatResponse, generateDocumentSummary } from "./services/gemini";
+import { formatAIContent } from "./services/contentFormatter";
 import { 
   insertNotebookSchema, 
   insertDocumentSchema, 
@@ -647,11 +648,15 @@ ${combinedContent}`;
       
       console.log(`Generated AI content length: ${aiContent.length} characters`);
 
+      // Format the AI content for better readability and professional appearance
+      const formattedContent = formatAIContent(aiContent, contentType);
+      console.log(`Formatted content length: ${formattedContent.length} characters`);
+
       // Create the note with AI-generated content
       const noteData = {
         notebookId,
         title,
-        content: aiContent,
+        content: formattedContent,
         sourceType: 'ai_generated' as const,
         aiContentType: contentType,
         linkedChatId: null
