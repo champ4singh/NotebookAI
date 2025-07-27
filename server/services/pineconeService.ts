@@ -144,8 +144,8 @@ Visit: https://app.pinecone.io/
       
       const vectors: PineconeVector[] = [];
       
-      // Process chunks in smaller batches to avoid timeouts
-      const batchSize = 5;
+      // Process chunks in smaller batches with delays to avoid timeouts
+      const batchSize = 3; // Reduce batch size further
       for (let batchStart = 0; batchStart < chunks.length; batchStart += batchSize) {
         const batch = chunks.slice(batchStart, Math.min(batchStart + batchSize, chunks.length));
         
@@ -153,7 +153,7 @@ Visit: https://app.pinecone.io/
           const chunkIndex = batchStart + i;
           const chunk = batch[i];
           try {
-            console.log(`Prepared chunk ${chunkIndex} for document ${documentId}`);
+            console.log(`Processing chunk ${chunkIndex} for document ${documentId}`);
             const embedding = await generateEmbedding(chunk);
             
             vectors.push({
@@ -167,9 +167,19 @@ Visit: https://app.pinecone.io/
                 chunkIndex: chunkIndex
               }
             });
+            
+            // Small delay between chunks to prevent overwhelming the system
+            if (chunkIndex < chunks.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
           } catch (error) {
             console.error(`Error generating embedding for chunk ${chunkIndex} of document ${documentId}:`, error);
           }
+        }
+        
+        // Longer delay between batches
+        if (batchStart + batchSize < chunks.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
 

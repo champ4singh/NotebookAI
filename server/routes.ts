@@ -7,6 +7,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { processDocument, formatFileSize } from "./services/documentProcessor";
 import { vectorStore } from "./services/vectorSearch";
+import { vectorWorker } from "./services/vectorWorker";
 import { generateChatResponse, generateDocumentSummary } from "./services/gemini";
 import { 
   insertNotebookSchema, 
@@ -183,17 +184,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const document = await storage.createDocument(documentData);
       console.log(`Document saved to database: ${document.id}`);
       
-      // Add to vector store for semantic search (non-blocking)
-      // Process this asynchronously to avoid database timeout
-      setImmediate(async () => {
-        try {
-          console.log(`Adding document ${document.id} to vector store...`);
-          await vectorStore.addDocument(document.id, document.filename, chunks, title);
-          console.log(`Document ${document.id} successfully added to vector store`);
-        } catch (vectorError) {
-          console.error(`Failed to add document ${document.id} to vector store:`, vectorError);
-          // Don't fail the entire operation if vector store fails
-        }
+      // Add to vector store using dedicated worker queue
+      // This completely isolates vector operations from the main database connection
+      vectorWorker.addJob({
+        documentId: document.id,
+        filename: document.filename,
+        chunks,
+        title
+      }).catch(error => {
+        console.error(`Failed to queue vector job for document ${document.id}:`, error);
       });
 
       // Clean up uploaded file

@@ -32,12 +32,17 @@ export interface ChatResponse {
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    // Use Gemini's embedding model
-    const response = await ai.models.embedContent({
+    // Add timeout protection for Gemini API calls
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Gemini embedding timeout')), 15000); // 15 second timeout
+    });
+    
+    const embeddingPromise = ai.models.embedContent({
       model: "text-embedding-004",
       contents: text,
     });
 
+    const response = await Promise.race([embeddingPromise, timeoutPromise]);
     return response.embeddings?.[0]?.values || [];
   } catch (error) {
     console.error("Error generating embedding with Gemini:", error);
