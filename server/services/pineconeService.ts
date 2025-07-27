@@ -40,9 +40,26 @@ class PineconeService {
       try {
         console.log(`Checking if Pinecone index exists... (attempt ${attempt + 1}/${maxRetries})`);
         const indexList = await this.pinecone.listIndexes();
+        console.log('Available indexes:', indexList.indexes?.map(i => i.name).join(', ') || 'none');
+        
         const indexExists = indexList.indexes?.some(index => index.name === this.indexName);
 
         if (!indexExists) {
+          // Check if we can use an existing index instead
+          const existingIndexes = indexList.indexes || [];
+          if (existingIndexes.length > 0) {
+            // Try to find a compatible index (768 dimensions for Gemini embeddings)
+            const compatibleIndex = existingIndexes.find(index => 
+              index.dimension === this.dimension && index.metric === 'cosine'
+            );
+            
+            if (compatibleIndex) {
+              console.log(`Using existing compatible Pinecone index: ${compatibleIndex.name}`);
+              this.indexName = compatibleIndex.name;
+              return;
+            }
+          }
+          
           console.log(`Creating Pinecone index: ${this.indexName}`);
           await this.pinecone.createIndex({
             name: this.indexName,
@@ -63,9 +80,39 @@ class PineconeService {
           console.log(`Pinecone index ${this.indexName} already exists`);
         }
         return; // Success, exit retry loop
-      } catch (error) {
+      } catch (error: any) {
         attempt++;
         console.error(`Error initializing Pinecone index (attempt ${attempt}):`, error);
+        
+        // Check if this is a quota limit error
+        if (error.message?.includes('max serverless indexes') || error.message?.includes('FORBIDDEN')) {
+          console.log('Reached Pinecone index limit. Checking for existing compatible indexes...');
+          try {
+            const indexList = await this.pinecone.listIndexes();
+            const existingIndexes = indexList.indexes || [];
+            console.log('Available indexes:', existingIndexes.map(i => `${i.name} (${i.dimension}d, ${i.metric})`).join(', '));
+            
+            // Use the first compatible index we find
+            const compatibleIndex = existingIndexes.find(index => 
+              index.dimension === this.dimension && index.metric === 'cosine'
+            );
+            
+            if (compatibleIndex) {
+              console.log(`Using existing compatible index: ${compatibleIndex.name}`);
+              this.indexName = compatibleIndex.name;
+              return;
+            } else if (existingIndexes.length > 0) {
+              // Use any available index as fallback
+              const fallbackIndex = existingIndexes[0];
+              console.log(`Using fallback index: ${fallbackIndex.name} (${fallbackIndex.dimension}d, ${fallbackIndex.metric})`);
+              this.indexName = fallbackIndex.name;
+              this.dimension = fallbackIndex.dimension || this.dimension;
+              return;
+            }
+          } catch (listError) {
+            console.error('Error listing existing indexes:', listError);
+          }
+        }
         
         if (attempt >= maxRetries) {
           console.error('Failed to initialize Pinecone after maximum retries');
