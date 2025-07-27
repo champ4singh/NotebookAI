@@ -33,34 +33,48 @@ class PineconeService {
   }
 
   async initializeIndex(): Promise<void> {
-    try {
-      console.log('Checking if Pinecone index exists...');
-      const indexList = await this.pinecone.listIndexes();
-      const indexExists = indexList.indexes?.some(index => index.name === this.indexName);
+    const maxRetries = 3;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+      try {
+        console.log(`Checking if Pinecone index exists... (attempt ${attempt + 1}/${maxRetries})`);
+        const indexList = await this.pinecone.listIndexes();
+        const indexExists = indexList.indexes?.some(index => index.name === this.indexName);
 
-      if (!indexExists) {
-        console.log(`Creating Pinecone index: ${this.indexName}`);
-        await this.pinecone.createIndex({
-          name: this.indexName,
-          dimension: this.dimension,
-          metric: 'cosine',
-          spec: {
-            serverless: {
-              cloud: 'aws',
-              region: 'us-east-1'
+        if (!indexExists) {
+          console.log(`Creating Pinecone index: ${this.indexName}`);
+          await this.pinecone.createIndex({
+            name: this.indexName,
+            dimension: this.dimension,
+            metric: 'cosine',
+            spec: {
+              serverless: {
+                cloud: 'aws',
+                region: 'us-east-1'
+              }
             }
-          }
-        });
+          });
+          
+          // Wait for index to be ready
+          console.log('Waiting for index to be ready...');
+          await this.waitForIndexReady();
+        } else {
+          console.log(`Pinecone index ${this.indexName} already exists`);
+        }
+        return; // Success, exit retry loop
+      } catch (error) {
+        attempt++;
+        console.error(`Error initializing Pinecone index (attempt ${attempt}):`, error);
         
-        // Wait for index to be ready
-        console.log('Waiting for index to be ready...');
-        await this.waitForIndexReady();
-      } else {
-        console.log(`Pinecone index ${this.indexName} already exists`);
+        if (attempt >= maxRetries) {
+          console.error('Failed to initialize Pinecone after maximum retries');
+          throw error;
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
       }
-    } catch (error) {
-      console.error('Error initializing Pinecone index:', error);
-      throw error;
     }
   }
 
