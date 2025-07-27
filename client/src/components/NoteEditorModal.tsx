@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Bold, Italic, Underline, List, ListOrdered, Link2, Edit3, Eye, X } from "lucide-react";
+import { Bold, Italic, Underline, List, ListOrdered, Link2, Edit3, Eye, X, Minus, Plus } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,7 @@ export default function NoteEditorModal({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isViewMode, setIsViewMode] = useState(false);
+  const [fontSize, setFontSize] = useState(12); // Default reduced by 2 points
 
   useEffect(() => {
     if (note) {
@@ -61,19 +62,19 @@ export default function NoteEditorModal({
 
         if (level === 1) {
           elements.push(
-            <h1 key={key++} className="text-2xl font-bold text-slate-800 mb-4 pb-3 border-b border-slate-200">
+            <h1 key={key++} className="font-bold text-slate-800 mb-4 pb-3 border-b border-slate-200" style={{ fontSize: `${fontSize + 8}px` }}>
               {text}
             </h1>
           );
         } else if (level === 2) {
           elements.push(
-            <h2 key={key++} className="text-xl font-bold text-slate-700 mb-3 mt-6">
+            <h2 key={key++} className="font-bold text-slate-700 mb-3 mt-6" style={{ fontSize: `${fontSize + 6}px` }}>
               {text}
             </h2>
           );
         } else {
           elements.push(
-            <h3 key={key++} className="text-lg font-semibold text-slate-600 mb-3 mt-4">
+            <h3 key={key++} className="font-semibold text-slate-600 mb-3 mt-4" style={{ fontSize: `${fontSize + 4}px` }}>
               {text}
             </h3>
           );
@@ -89,8 +90,8 @@ export default function NoteEditorModal({
 
         elements.push(
           <div key={key++} className={`flex items-start mb-2 ${indent > 0 ? `ml-${Math.min(indent * 6, 18)}` : ''}`}>
-            <span className="text-blue-600 mr-3 mt-1">•</span>
-            <span dangerouslySetInnerHTML={{ __html: processed }} className="leading-relaxed"></span>
+            <span className="text-blue-600 mr-3 mt-1" style={{ fontSize: `${fontSize}px` }}>•</span>
+            <span dangerouslySetInnerHTML={{ __html: processed }} className="leading-relaxed" style={{ fontSize: `${fontSize}px` }}></span>
           </div>
         );
       }
@@ -106,8 +107,8 @@ export default function NoteEditorModal({
 
           elements.push(
             <div key={key++} className={`flex items-start mb-2 ${indent > 0 ? `ml-${Math.min(indent * 6, 18)}` : ''}`}>
-              <span className="text-blue-600 font-semibold mr-3 mt-0.5 min-w-0">{number}.</span>
-              <span dangerouslySetInnerHTML={{ __html: processed }} className="leading-relaxed"></span>
+              <span className="text-blue-600 font-semibold mr-3 mt-0.5 min-w-0" style={{ fontSize: `${fontSize}px` }}>{number}.</span>
+              <span dangerouslySetInnerHTML={{ __html: processed }} className="leading-relaxed" style={{ fontSize: `${fontSize}px` }}></span>
             </div>
           );
         }
@@ -121,10 +122,10 @@ export default function NoteEditorModal({
         const processed = line
           .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
           .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-          .replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-2 py-1 rounded text-sm font-mono">$1</code>');
+          .replace(/`([^`]+)`/g, `<code class="bg-slate-100 px-2 py-1 rounded font-mono" style="font-size: ${fontSize}px">$1</code>`);
 
         elements.push(
-          <p key={key++} className="leading-relaxed mb-3" dangerouslySetInnerHTML={{ __html: processed }}></p>
+          <p key={key++} className="leading-relaxed mb-3" dangerouslySetInnerHTML={{ __html: processed }} style={{ fontSize: `${fontSize}px` }}></p>
         );
       }
     }
@@ -282,6 +283,29 @@ export default function NoteEditorModal({
                     </Button>
                     <Button variant="ghost" size="sm" className="p-1.5 h-auto">
                       <Link2 className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+                {isViewMode && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 h-auto"
+                      onClick={() => setFontSize(Math.max(10, fontSize - 1))}
+                      disabled={fontSize <= 10}
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+                    <span className="text-xs text-slate-500 px-2">{fontSize}px</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 h-auto"
+                      onClick={() => setFontSize(Math.min(24, fontSize + 1))}
+                      disabled={fontSize >= 24}
+                    >
+                      <Plus className="w-3 h-3" />
                     </Button>
                   </>
                 )}

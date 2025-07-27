@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Bot, User, Edit, Trash2, Download, Link, GraduationCap, FileText, HelpCircle, Clock, MoreVertical } from "lucide-react";
+import { Plus, Bot, User, Edit, Trash2, Download, Link, GraduationCap, FileText, HelpCircle, Clock, MoreVertical, Type, Minus, Plus as PlusIcon } from "lucide-react";
 import NoteEditorModal from "./NoteEditorModal";
 import type { Note } from "@shared/schema";
 
@@ -18,6 +18,7 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [generatingContent, setGeneratingContent] = useState<string | null>(null);
+  const [fontSize, setFontSize] = useState(12); // Default reduced by 2 points
 
   const { data: notes = [], isLoading } = useQuery<Note[]>({
     queryKey: ["/api/notebooks", notebookId, "notes"],
@@ -155,19 +156,19 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
         
         if (level === 1) {
           elements.push(
-            <h1 key={key++} className="text-xl font-bold text-slate-800 mb-3 pb-2 border-b border-slate-200">
+            <h1 key={key++} className="font-bold text-slate-800 mb-3 pb-2 border-b border-slate-200" style={{ fontSize: `${fontSize + 6}px` }}>
               {text}
             </h1>
           );
         } else if (level === 2) {
           elements.push(
-            <h2 key={key++} className="text-lg font-bold text-slate-700 mb-2 mt-4">
+            <h2 key={key++} className="font-bold text-slate-700 mb-2 mt-4" style={{ fontSize: `${fontSize + 4}px` }}>
               {text}
             </h2>
           );
         } else {
           elements.push(
-            <h3 key={key++} className="text-base font-semibold text-slate-600 mb-2 mt-3">
+            <h3 key={key++} className="font-semibold text-slate-600 mb-2 mt-3" style={{ fontSize: `${fontSize + 2}px` }}>
               {text}
             </h3>
           );
@@ -183,8 +184,8 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
         
         elements.push(
           <div key={key++} className={`flex items-start mb-1 ${indent > 0 ? `ml-${Math.min(indent * 4, 12)}` : ''}`}>
-            <span className="text-blue-600 mr-2 mt-1 text-sm">•</span>
-            <span dangerouslySetInnerHTML={{ __html: processed }} className="text-sm leading-relaxed"></span>
+            <span className="text-blue-600 mr-2 mt-1" style={{ fontSize: `${fontSize}px` }}>•</span>
+            <span dangerouslySetInnerHTML={{ __html: processed }} className="leading-relaxed" style={{ fontSize: `${fontSize}px` }}></span>
           </div>
         );
       }
@@ -200,8 +201,8 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
           
           elements.push(
             <div key={key++} className={`flex items-start mb-1 ${indent > 0 ? `ml-${Math.min(indent * 4, 12)}` : ''}`}>
-              <span className="text-blue-600 font-semibold mr-2 mt-0.5 text-sm min-w-0">{number}.</span>
-              <span dangerouslySetInnerHTML={{ __html: processed }} className="text-sm leading-relaxed"></span>
+              <span className="text-blue-600 font-semibold mr-2 mt-0.5 min-w-0" style={{ fontSize: `${fontSize}px` }}>{number}.</span>
+              <span dangerouslySetInnerHTML={{ __html: processed }} className="leading-relaxed" style={{ fontSize: `${fontSize}px` }}></span>
             </div>
           );
         }
@@ -215,10 +216,10 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
         const processed = line
           .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
           .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-          .replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-sm">$1</code>');
+          .replace(/`([^`]+)`/g, `<code class="bg-slate-100 px-1 py-0.5 rounded" style="font-size: ${fontSize}px">$1</code>`);
         
         elements.push(
-          <p key={key++} className="text-sm leading-relaxed mb-2" dangerouslySetInnerHTML={{ __html: processed }}></p>
+          <p key={key++} className="leading-relaxed mb-2" dangerouslySetInnerHTML={{ __html: processed }} style={{ fontSize: `${fontSize}px` }}></p>
         );
       }
     }
@@ -248,7 +249,28 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-slate-900">Notes</h2>
-            <MoreVertical className="w-4 h-4 text-slate-500" />
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-1 h-auto"
+                onClick={() => setFontSize(Math.max(10, fontSize - 1))}
+                disabled={fontSize <= 10}
+              >
+                <Minus className="w-3 h-3" />
+              </Button>
+              <span className="text-xs text-slate-500 px-1">{fontSize}px</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-1 h-auto"
+                onClick={() => setFontSize(Math.min(20, fontSize + 1))}
+                disabled={fontSize >= 20}
+              >
+                <PlusIcon className="w-3 h-3" />
+              </Button>
+              <MoreVertical className="w-4 h-4 text-slate-500 ml-2" />
+            </div>
           </div>
           
           {/* Add Note Button */}
