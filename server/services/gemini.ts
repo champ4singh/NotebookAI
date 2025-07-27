@@ -82,6 +82,11 @@ export async function generateChatResponse(
       ])).values()
     );
 
+    console.log(`Chat response generation: Found ${uniqueDocuments.length} unique documents:`);
+    uniqueDocuments.forEach((doc, index) => {
+      console.log(`  [${index + 1}] ${doc.filename} (${doc.chunks.length} chunks)`);
+    });
+
     // Create a numbered context with document references (one number per unique document)
     const context = uniqueDocuments.map((doc, index) => {
       const combinedContent = doc.chunks.map(chunk => chunk.content).join('\n\n');
@@ -92,12 +97,15 @@ export async function generateChatResponse(
 
 Based on the provided document context, answer the user's question accurately and comprehensively. When referencing information from documents, use ONLY the numbered citations that correspond to unique documents.
 
+AVAILABLE DOCUMENTS: ${uniqueDocuments.length} document(s) are provided for analysis.
+${uniqueDocuments.map((doc, index) => `[${index + 1}] ${doc.filename}`).join('\n')}
+
 CRITICAL RULES FOR CITATIONS:
-- Only use [1] if there is information from document 1
-- Only use [2] if there is information from document 2, etc.
+- You MUST analyze information from ALL provided documents when relevant to the question
+- Use [1] for information from the first document, [2] for the second document, etc.
 - NEVER use multiple citation numbers for the same document
-- If all information comes from one document, only use [1] throughout your response
-- If information comes from multiple unique documents, use [1], [2], etc. for each unique document
+- When summarizing or comparing, ensure you reference all relevant documents
+- If the user asks about "documents" (plural) or "selected documents", make sure to include information from ALL provided documents
 
 Document Context (each number represents ONE unique document):
 ${context}`;
