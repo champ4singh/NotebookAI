@@ -333,7 +333,20 @@ export default function ChatInterface({ notebookId, selectedDocuments = [] }: Ch
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div 
+        className="flex-1 overflow-y-auto p-4 space-y-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          const container = e.currentTarget;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            container.scrollTop += 50;
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            container.scrollTop -= 50;
+          }
+        }}
+      >
         {/* Welcome Message */}
         <div className="flex items-start space-x-3">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
