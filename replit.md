@@ -6,6 +6,7 @@ NotebookAI is an AI-powered document analysis and chat application built with a 
 
 ## Recent Changes
 
+- **Enforced Single Pinecone Index Usage (July 27, 2025)**: Updated Pinecone service to strictly use only "notebookai-documents" index. Removed fallback logic that used other existing indexes. Now provides clear error messages when index limit is reached, instructing users to delete unwanted indexes.
 - **Pinecone Vector Database Integration (July 27, 2025)**: Migrated from in-memory vector storage to Pinecone cloud vector database for persistent embeddings. Auto-creates index if not exists, handles document addition/removal with proper embedding management.
 - **Enhanced Citation Tooltips (July 27, 2025)**: Citation tooltips now show actual document chunk content (up to 200 characters) when hovering over [1] references. Fixed fallback logic to ensure tooltips work even when vector store is empty.
 - **Migration to Replit Environment (July 27, 2025)**: Successfully migrated from Replit Agent to standard Replit environment with proper client/server separation, security practices, and PostgreSQL database setup.
@@ -40,7 +41,7 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle with schema-first approach
 - **Session Storage**: PostgreSQL-backed sessions using connect-pg-simple
 - **File Storage**: Local filesystem for uploaded documents
-- **Vector Storage**: Pinecone cloud vector database for persistent document embeddings
+- **Vector Storage**: Pinecone cloud vector database with dedicated "notebookai-documents" index for persistent document embeddings
 
 ## Key Components
 

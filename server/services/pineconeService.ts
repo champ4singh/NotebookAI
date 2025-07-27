@@ -42,24 +42,9 @@ class PineconeService {
         const indexList = await this.pinecone.listIndexes();
         console.log('Available indexes:', indexList.indexes?.map(i => i.name).join(', ') || 'none');
         
-        const indexExists = indexList.indexes?.some(index => index.name === this.indexName);
+        const targetIndex = indexList.indexes?.find(index => index.name === this.indexName);
 
-        if (!indexExists) {
-          // Check if we can use an existing index instead
-          const existingIndexes = indexList.indexes || [];
-          if (existingIndexes.length > 0) {
-            // Try to find a compatible index (768 dimensions for Gemini embeddings)
-            const compatibleIndex = existingIndexes.find(index => 
-              index.dimension === this.dimension && index.metric === 'cosine'
-            );
-            
-            if (compatibleIndex) {
-              console.log(`Using existing compatible Pinecone index: ${compatibleIndex.name}`);
-              this.indexName = compatibleIndex.name;
-              return;
-            }
-          }
-          
+        if (!targetIndex) {
           console.log(`Creating Pinecone index: ${this.indexName}`);
           await this.pinecone.createIndex({
             name: this.indexName,
@@ -78,6 +63,10 @@ class PineconeService {
           await this.waitForIndexReady();
         } else {
           console.log(`Pinecone index ${this.indexName} already exists`);
+          // Verify the existing index has the correct dimensions
+          if (targetIndex.dimension !== this.dimension) {
+            console.warn(`Warning: Existing index ${this.indexName} has ${targetIndex.dimension} dimensions, expected ${this.dimension}`);
+          }
         }
         return; // Success, exit retry loop
       } catch (error: any) {
@@ -85,33 +74,35 @@ class PineconeService {
         console.error(`Error initializing Pinecone index (attempt ${attempt}):`, error);
         
         // Check if this is a quota limit error
-        if (error.message?.includes('max serverless indexes') || error.message?.includes('FORBIDDEN')) {
-          console.log('Reached Pinecone index limit. Checking for existing compatible indexes...');
-          try {
-            const indexList = await this.pinecone.listIndexes();
-            const existingIndexes = indexList.indexes || [];
-            console.log('Available indexes:', existingIndexes.map(i => `${i.name} (${i.dimension}d, ${i.metric})`).join(', '));
-            
-            // Use the first compatible index we find
-            const compatibleIndex = existingIndexes.find(index => 
-              index.dimension === this.dimension && index.metric === 'cosine'
-            );
-            
-            if (compatibleIndex) {
-              console.log(`Using existing compatible index: ${compatibleIndex.name}`);
-              this.indexName = compatibleIndex.name;
-              return;
-            } else if (existingIndexes.length > 0) {
-              // Use any available index as fallback
-              const fallbackIndex = existingIndexes[0];
-              console.log(`Using fallback index: ${fallbackIndex.name} (${fallbackIndex.dimension}d, ${fallbackIndex.metric})`);
-              this.indexName = fallbackIndex.name;
-              this.dimension = fallbackIndex.dimension || this.dimension;
-              return;
-            }
-          } catch (listError) {
-            console.error('Error listing existing indexes:', listError);
-          }
+        if (error.message?.includes('max serverless indexes') || 
+            error.message?.includes('FORBIDDEN') || 
+            error.message?.includes('quota') ||
+            error.message?.includes('limit')) {
+          
+          const indexList = await this.pinecone.listIndexes();
+          const existingIndexes = indexList.indexes || [];
+          
+          const errorMessage = `
+═══════════════════════════════════════════════════════════════
+❌ PINECONE INDEX LIMIT REACHED
+═══════════════════════════════════════════════════════════════
+
+Cannot create the required index "${this.indexName}" because you've reached 
+your Pinecone account's index limit.
+
+Current indexes in your account:
+${existingIndexes.map(idx => `  • ${idx.name} (${idx.dimension}d, ${idx.metric})`).join('\n')}
+
+SOLUTION: Please delete one or more unwanted indexes from your Pinecone 
+dashboard to make room for the "${this.indexName}" index.
+
+Visit: https://app.pinecone.io/
+
+═══════════════════════════════════════════════════════════════
+          `.trim();
+          
+          console.error(errorMessage);
+          throw new Error(`Pinecone index limit reached. Please delete unwanted indexes to create "${this.indexName}". Current indexes: ${existingIndexes.map(i => i.name).join(', ')}`);
         }
         
         if (attempt >= maxRetries) {
