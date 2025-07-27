@@ -281,13 +281,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const selectedDocs = allDocuments.filter(doc => selectedDocuments.includes(doc.id));
           console.log(`Using ${selectedDocs.length} selected documents directly`);
           
-          relevantChunks = selectedDocs.map(doc => ({
-            content: doc.content.slice(0, 2000),
-            filename: doc.filename,
-            title: doc.title || undefined,
-            documentId: doc.id,
-            similarity: 1.0
-          }));
+          relevantChunks = selectedDocs.flatMap(doc => {
+            // Split document into chunks for better citation
+            const chunkSize = 1500;
+            const chunks = [];
+            for (let i = 0; i < doc.content.length; i += chunkSize) {
+              chunks.push({
+                content: doc.content.slice(i, i + chunkSize),
+                filename: doc.filename,
+                title: doc.title || undefined,
+                documentId: doc.id,
+                similarity: 1.0
+              });
+            }
+            return chunks.slice(0, 5); // Limit to 5 chunks per document
+          });
         }
       } else {
         // No specific documents selected, use all available
@@ -298,13 +306,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const allDocuments = await storage.getNotebookDocuments(notebookId);
           console.log(`Found ${allDocuments.length} total documents in notebook`);
           
-          relevantChunks = allDocuments.map(doc => ({
-            content: doc.content.slice(0, 2000),
-            filename: doc.filename,
-            title: doc.title || undefined,
-            documentId: doc.id,
-            similarity: 1.0
-          }));
+          relevantChunks = allDocuments.flatMap(doc => {
+            // Split document into chunks for better citation
+            const chunkSize = 1500;
+            const chunks = [];
+            for (let i = 0; i < doc.content.length; i += chunkSize) {
+              chunks.push({
+                content: doc.content.slice(i, i + chunkSize),
+                filename: doc.filename,
+                title: doc.title || undefined,
+                documentId: doc.id,
+                similarity: 1.0
+              });
+            }
+            return chunks.slice(0, 5); // Limit to 5 chunks per document
+          });
         }
       }
       
