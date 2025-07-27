@@ -6,12 +6,12 @@ NotebookAI is an AI-powered document analysis and chat application built with a 
 
 ## Recent Changes
 
+- **Fixed AI Content Generation & Enhanced Formatting (July 27, 2025)**: Resolved client-side error handling for AI content generation that was showing false error messages. Improved content formatting with structured prompts for Study Guide, Briefing Doc, FAQ, and Timeline generation. Added professional formatting templates with clear headings, bullet points, and consistent structure.
+- **Comprehensive PDF Upload Timeout Fix (July 27, 2025)**: Implemented dedicated Vector Worker queue system to completely isolate vector operations from main database connections. Added timeout protection, improved batch processing, and enhanced connection pooling to prevent database timeouts during document processing.
 - **Enforced Single Pinecone Index Usage (July 27, 2025)**: Updated Pinecone service to strictly use only "notebookai-documents" index. Removed fallback logic that used other existing indexes. Now provides clear error messages when index limit is reached, instructing users to delete unwanted indexes.
 - **Pinecone Vector Database Integration (July 27, 2025)**: Migrated from in-memory vector storage to Pinecone cloud vector database for persistent embeddings. Auto-creates index if not exists, handles document addition/removal with proper embedding management.
 - **Enhanced Citation Tooltips (July 27, 2025)**: Citation tooltips now show actual document chunk content (up to 200 characters) when hovering over [1] references. Fixed fallback logic to ensure tooltips work even when vector store is empty.
 - **Migration to Replit Environment (July 27, 2025)**: Successfully migrated from Replit Agent to standard Replit environment with proper client/server separation, security practices, and PostgreSQL database setup.
-- **Fixed Citation System (July 27, 2025)**: Resolved issue where single documents were showing multiple citations. Now properly groups document chunks and shows only one citation per unique document.
-- **Enhanced Citation System (July 26, 2025)**: Implemented numbered citation references [1], [2] in AI responses with document titles extracted from content. Citations now display as "[1] Document Title - Filename" format.
 
 ## User Preferences
 

@@ -507,7 +507,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       switch (contentType) {
         case 'study_guide':
-          prompt = `Generate a comprehensive study guide summarizing the key concepts, definitions, and sections from the provided documents. Organize it by topic or section and include bullet points for clarity. Focus on the most important information that someone would need to understand and retain from these materials.
+          prompt = `Generate a comprehensive study guide from the provided documents. Format it with clear headings, bullet points, and proper structure for easy reading and studying.
+
+Structure your response as follows:
+# Study Guide
+
+## Key Topics
+- Topic 1: Brief description
+- Topic 2: Brief description
+- (etc.)
+
+## Important Concepts
+### Concept 1
+- Definition and explanation
+- Key points to remember
+
+### Concept 2  
+- Definition and explanation
+- Key points to remember
+
+## Summary Points
+- Main takeaway 1
+- Main takeaway 2
+- (etc.)
 
 Documents:
 ${combinedContent}`;
@@ -515,7 +537,32 @@ ${combinedContent}`;
           break;
           
         case 'briefing_doc':
-          prompt = `Write a briefing document summarizing the key points, insights, and implications of the provided documents in a clear and concise format for decision-makers. Focus on actionable insights, main findings, and strategic implications.
+          prompt = `Write a professional briefing document from the provided documents. Format it for decision-makers with clear structure and actionable insights.
+
+Structure your response as follows:
+# Executive Briefing
+
+## Executive Summary
+- Key finding 1
+- Key finding 2
+- Main recommendation
+
+## Key Insights
+### Finding 1
+- Details and implications
+- Supporting evidence
+
+### Finding 2
+- Details and implications
+- Supporting evidence
+
+## Actionable Recommendations
+1. Recommendation 1 with rationale
+2. Recommendation 2 with rationale
+3. Next steps
+
+## Conclusion
+Brief summary of most critical points.
 
 Documents:
 ${combinedContent}`;
@@ -523,7 +570,30 @@ ${combinedContent}`;
           break;
           
         case 'faq':
-          prompt = `Create a Frequently Asked Questions (FAQ) section based on the provided documents, highlighting common questions a reader might have along with clear, accurate answers. Focus on addressing potential confusion and providing helpful clarifications.
+          prompt = `Create a comprehensive FAQ section based on the provided documents. Format it with clear questions and detailed answers.
+
+Structure your response as follows:
+# Frequently Asked Questions
+
+## General Questions
+
+**Q: What is [main topic]?**
+A: Detailed answer based on documents
+
+**Q: How does [key concept] work?**
+A: Step-by-step explanation
+
+## Technical Questions
+
+**Q: What are the requirements?**
+A: List of requirements with details
+
+**Q: What are common issues?**
+A: Common problems and solutions
+
+## Additional Questions
+
+Include 3-5 more relevant questions that readers would likely have.
 
 Documents:
 ${combinedContent}`;
@@ -531,7 +601,24 @@ ${combinedContent}`;
           break;
           
         case 'timeline':
-          prompt = `Extract all events, dates, and milestones mentioned in the provided documents and create a chronological timeline including dates (if available) and a short description of each event. If specific dates aren't available, organize by sequence or relative timing.
+          prompt = `Extract all events, dates, and milestones from the documents and create a chronological timeline. Format it clearly with dates and descriptions.
+
+Structure your response as follows:
+# Timeline
+
+## [Date/Period 1]
+- **Event**: Description of what happened
+- **Significance**: Why this was important
+
+## [Date/Period 2]  
+- **Event**: Description of what happened
+- **Significance**: Why this was important
+
+## [Date/Period 3]
+- **Event**: Description of what happened
+- **Significance**: Why this was important
+
+If exact dates aren't available, organize by sequence (Phase 1, Phase 2, etc.) or relative timing (Early Period, Mid Period, Recent Period).
 
 Documents:
 ${combinedContent}`;

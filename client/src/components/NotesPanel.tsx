@@ -64,13 +64,18 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/notebooks", notebookId, "notes"] });
       setGeneratingContent(null);
+      const contentTypeName = data.contentType ? 
+        data.contentType.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : 
+        'AI content';
       toast({
         title: "Success",
-        description: `${data.contentType.replace('_', ' ')} generated successfully`,
+        description: `${contentTypeName} generated successfully`,
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       setGeneratingContent(null);
+      console.error("AI content generation error:", error);
+      
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -82,9 +87,11 @@ export default function NotesPanel({ notebookId }: NotesPanelProps) {
         }, 500);
         return;
       }
+      
+      const errorMessage = error?.message || error?.response?.data?.message || "Failed to generate AI content";
       toast({
         title: "Error",
-        description: "Failed to generate AI content",
+        description: errorMessage,
         variant: "destructive",
       });
     },
