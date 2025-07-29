@@ -114,6 +114,31 @@ After running any script, you can verify the setup by:
 
 3. Verifying sample data exists in the tables
 
+## Database Cleanup
+
+If you need to clean up your database (remove all data except users), use the cleanup script:
+
+```bash
+# Install required dependency
+pip install psycopg2-binary
+
+# Run the cleanup script
+python cleanup-supabase.py
+# or
+python3 cleanup-supabase.py
+```
+
+**What the cleanup script does:**
+- ✅ Removes all chat history
+- ✅ Removes all notes
+- ✅ Removes all document vectors
+- ✅ Removes all documents
+- ✅ Removes all notebooks
+- ✅ Removes all sessions
+- ⚠️ **Preserves all users** - no user data is deleted
+
+The script will ask for confirmation before proceeding and show you exactly what will be deleted.
+
 ## Troubleshooting
 
 ### Permission Errors
