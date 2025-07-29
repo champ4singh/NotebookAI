@@ -11,7 +11,7 @@ NotebookAI is an AI-powered document analysis and chat application built with a 
 - **Enforced Single Pinecone Index Usage (July 27, 2025)**: Updated Pinecone service to strictly use only "notebookai-documents" index. Removed fallback logic that used other existing indexes. Now provides clear error messages when index limit is reached, instructing users to delete unwanted indexes.
 - **Pinecone Vector Database Integration (July 27, 2025)**: Migrated from in-memory vector storage to Pinecone cloud vector database for persistent embeddings. Auto-creates index if not exists, handles document addition/removal with proper embedding management.
 - **Enhanced Citation Tooltips (July 27, 2025)**: Citation tooltips now show actual document chunk content (up to 200 characters) when hovering over [1] references. Fixed fallback logic to ensure tooltips work even when vector store is empty.
-- **Simplified Authentication System (July 29, 2025)**: Removed complex Replit Auth integration and replaced with simplified demo user system for easier access during development. Users can now access the main application without authentication barriers.
+- **Simplified Authentication System (July 29, 2025)**: Removed complex Replit Auth integration and replaced with simplified demo user system for easier access during development. Users can now access the main application without authentication barriers. Landing page now has "Get Started" button that leads directly to the NotebookAI dashboard.
 - **Migration to Replit Environment (July 27, 2025)**: Successfully migrated from Replit Agent to standard Replit environment with proper client/server separation, security practices, and PostgreSQL database setup.
 
 ## User Preferences
