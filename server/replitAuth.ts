@@ -10,15 +10,24 @@ import { storage } from "./storage";
 
 // Set default domain if not provided
 if (!process.env.REPLIT_DOMAINS) {
-  const hostname = process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'localhost:5000';
-  process.env.REPLIT_DOMAINS = hostname;
-  console.log(`Using default domain: ${hostname}`);
+  // Use the actual repl domain from environment variables
+  const replDomain = process.env.REPL_URL ? 
+    new URL(process.env.REPL_URL).hostname : 
+    (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}-${process.env.REPL_OWNER}.replit.dev` : 'localhost:5000');
+  
+  process.env.REPLIT_DOMAINS = replDomain;
+  console.log(`Using default domain: ${replDomain}`);
 }
 
 const getOidcConfig = memoize(
   async () => {
-    const replId = process.env.REPL_ID || 'default-repl-id';
+    const replId = process.env.REPL_ID;
     const issuerUrl = process.env.ISSUER_URL || "https://replit.com/oidc";
+    
+    if (!replId) {
+      throw new Error('REPL_ID environment variable is required for authentication');
+    }
+    
     console.log(`OIDC Config - Issuer: ${issuerUrl}, Client ID: ${replId}`);
     
     return await client.discovery(
@@ -91,17 +100,19 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
-    const callbackURL = domain.includes('localhost') ? 
-      `http://${domain}/api/callback` : 
-      `https://${domain}/api/callback`;
+  const domains = process.env.REPLIT_DOMAINS!.split(",");
+  
+  for (const domain of domains) {
+    const trimmedDomain = domain.trim();
+    const callbackURL = trimmedDomain.includes('localhost') ? 
+      `http://${trimmedDomain}/api/callback` : 
+      `https://${trimmedDomain}/api/callback`;
     
-    console.log(`Setting up auth strategy for domain: ${domain}, callback: ${callbackURL}`);
+    console.log(`Setting up auth strategy for domain: ${trimmedDomain}, callback: ${callbackURL}`);
     
     const strategy = new Strategy(
       {
-        name: `replitauth:${domain}`,
+        name: `replitauth:${trimmedDomain}`,
         config,
         scope: "openid email profile offline_access",
         callbackURL,
@@ -115,30 +126,49 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const strategyName = `replitauth:${req.hostname}`;
+    console.log(`Login attempt for strategy: ${strategyName}`);
+    
+    passport.authenticate(strategyName, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const strategyName = `replitauth:${req.hostname}`;
+    console.log(`Callback received for strategy: ${strategyName}`);
+    
+    passport.authenticate(strategyName, {
       successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-    })(req, res, next);
+      failureRedirect: "/api/login?error=auth_failed",
+    })(req, res, (err) => {
+      if (err) {
+        console.error('Authentication callback error:', err);
+        return res.redirect("/api/login?error=callback_failed");
+      }
+      next();
+    });
   });
 
-  app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      const protocol = req.hostname.includes('localhost') ? 'http' : 'https';
-      const redirectUri = `${protocol}://${req.hostname}${req.hostname.includes('localhost') ? ':5000' : ''}`;
-      
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID || 'default-repl-id',
-          post_logout_redirect_uri: redirectUri,
-        }).href
-      );
+  app.get("/api/logout", async (req, res) => {
+    req.logout(async () => {
+      try {
+        const config = await getOidcConfig();
+        const protocol = req.hostname.includes('localhost') ? 'http' : 'https';
+        const port = req.hostname.includes('localhost') ? ':5000' : '';
+        const redirectUri = `${protocol}://${req.hostname}${port}`;
+        
+        res.redirect(
+          client.buildEndSessionUrl(config, {
+            client_id: process.env.REPL_ID!,
+            post_logout_redirect_uri: redirectUri,
+          }).href
+        );
+      } catch (error) {
+        console.error('Error during logout:', error);
+        res.redirect('/');
+      }
     });
   });
 }
