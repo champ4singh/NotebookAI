@@ -4,7 +4,6 @@ import multer from "multer";
 import path from "path";
 import { promises as fs } from "fs";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import { processDocument, formatFileSize } from "./services/documentProcessor";
 import { vectorStore } from "./services/vectorSearch";
 import { vectorWorker } from "./services/vectorWorker";
@@ -36,14 +35,36 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Simplified auth - use default user ID for now
+  const DEFAULT_USER_ID = 'default-user';
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Create default user if not exists
+  try {
+    let user = await storage.getUser(DEFAULT_USER_ID);
+    if (!user) {
+      await storage.upsertUser({
+        id: DEFAULT_USER_ID,
+        firstName: 'Demo',
+        lastName: 'User',
+        email: 'demo@notebookai.com',
+        profileImageUrl: null
+      });
+    }
+  } catch (error) {
+    console.log("Creating default user...");
+    await storage.upsertUser({
+      id: DEFAULT_USER_ID,
+      firstName: 'Demo',
+      lastName: 'User',
+      email: 'demo@notebookai.com',
+      profileImageUrl: null
+    });
+  }
+
+  // Auth routes (simplified)
+  app.get('/api/auth/user', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await storage.getUser(DEFAULT_USER_ID);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -52,10 +73,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Notebook routes
-  app.get('/api/notebooks', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notebooks', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const notebooks = await storage.getUserNotebooks(userId);
+      const notebooks = await storage.getUserNotebooks(DEFAULT_USER_ID);
       res.json(notebooks);
     } catch (error) {
       console.error("Error fetching notebooks:", error);
@@ -63,12 +83,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/notebooks', isAuthenticated, async (req: any, res) => {
+  app.post('/api/notebooks', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
       const notebookData = insertNotebookSchema.parse({
         ...req.body,
-        userId
+        userId: DEFAULT_USER_ID
       });
       
       const notebook = await storage.createNotebook(notebookData);
@@ -79,18 +98,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/notebooks/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notebooks/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const notebook = await storage.getNotebook(id);
       
       if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
-      }
-
-      // Check if user owns the notebook
-      if (notebook.userId !== req.user.claims.sub) {
-        return res.status(403).json({ message: "Access denied" });
       }
 
       res.json(notebook);
@@ -100,12 +114,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/notebooks/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/notebooks/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const notebook = await storage.getNotebook(id);
       
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -118,12 +132,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/notebooks/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/notebooks/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const notebook = await storage.getNotebook(id);
       
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -136,12 +150,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Document routes
-  app.get('/api/notebooks/:notebookId/documents', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notebooks/:notebookId/documents', async (req, res) => {
     try {
       const { notebookId } = req.params;
       const notebook = await storage.getNotebook(notebookId);
       
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -153,13 +167,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/notebooks/:notebookId/documents', isAuthenticated, upload.single('file'), async (req: any, res) => {
+  app.post('/api/notebooks/:notebookId/documents', upload.single('file'), async (req, res) => {
     let filePath: string | null = null;
     try {
       const { notebookId } = req.params;
       const notebook = await storage.getNotebook(notebookId);
       
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -229,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/documents/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/documents/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const document = await storage.getDocument(id);
@@ -239,8 +253,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const notebook = await storage.getNotebook(document.notebookId);
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
-        return res.status(403).json({ message: "Access denied" });
+      if (!notebook) {
+        return res.status(404).json({ message: "Notebook not found" });
       }
 
       await storage.deleteDocument(id);
@@ -254,12 +268,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chat routes
-  app.get('/api/notebooks/:notebookId/chat', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notebooks/:notebookId/chat', async (req, res) => {
     try {
       const { notebookId } = req.params;
       const notebook = await storage.getNotebook(notebookId);
       
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -271,12 +285,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/notebooks/:notebookId/chat', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/notebooks/:notebookId/chat', async (req, res) => {
     try {
       const { notebookId } = req.params;
       
       const notebook = await storage.getNotebook(notebookId);
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -288,13 +302,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/notebooks/:notebookId/chat', isAuthenticated, async (req: any, res) => {
+  app.post('/api/notebooks/:notebookId/chat', async (req, res) => {
     try {
       const { notebookId } = req.params;
       const { message, selectedDocuments } = req.body;
       
       const notebook = await storage.getNotebook(notebookId);
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -395,12 +409,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Notes routes
-  app.get('/api/notebooks/:notebookId/notes', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notebooks/:notebookId/notes', async (req, res) => {
     try {
       const { notebookId } = req.params;
       const notebook = await storage.getNotebook(notebookId);
       
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -412,12 +426,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/notebooks/:notebookId/notes', isAuthenticated, async (req: any, res) => {
+  app.post('/api/notebooks/:notebookId/notes', async (req, res) => {
     try {
       const { notebookId } = req.params;
       const notebook = await storage.getNotebook(notebookId);
       
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
@@ -434,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/notes/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/notes/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const note = await storage.getNote(id);
@@ -444,8 +458,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const notebook = await storage.getNotebook(note.notebookId);
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
-        return res.status(403).json({ message: "Access denied" });
+      if (!notebook) {
+        return res.status(404).json({ message: "Notebook not found" });
       }
 
       const updates = insertNoteSchema.partial().parse(req.body);
@@ -457,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/notes/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/notes/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const note = await storage.getNote(id);
@@ -467,8 +481,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const notebook = await storage.getNotebook(note.notebookId);
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
-        return res.status(403).json({ message: "Access denied" });
+      if (!notebook) {
+        return res.status(404).json({ message: "Notebook not found" });
       }
 
       await storage.deleteNote(id);
@@ -480,13 +494,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Content Generation route
-  app.post('/api/notebooks/:notebookId/generate-ai-content', isAuthenticated, async (req: any, res) => {
+  app.post('/api/notebooks/:notebookId/generate-ai-content', async (req, res) => {
     try {
       const { notebookId } = req.params;
       const { contentType, selectedDocuments } = req.body;
       
       const notebook = await storage.getNotebook(notebookId);
-      if (!notebook || notebook.userId !== req.user.claims.sub) {
+      if (!notebook) {
         return res.status(404).json({ message: "Notebook not found" });
       }
 
