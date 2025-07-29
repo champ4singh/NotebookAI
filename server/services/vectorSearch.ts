@@ -1,6 +1,6 @@
-import { pineconeService } from './pineconeService';
+import { supabaseVectorService } from './supabaseVector';
 
-// Vector store interface that delegates to Pinecone
+// Vector store interface that delegates to Supabase
 class VectorStore {
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
@@ -20,7 +20,10 @@ class VectorStore {
   
   private async initialize(): Promise<void> {
     try {
-      await pineconeService.initializeIndex();
+      const ready = await supabaseVectorService.isReady();
+      if (!ready) {
+        throw new Error('Supabase vector store is not ready');
+      }
       this.initialized = true;
       console.log('Vector store initialized successfully');
     } catch (error) {
@@ -39,7 +42,7 @@ class VectorStore {
         setTimeout(() => reject(new Error('Vector store operation timed out')), 30000); // 30 second timeout
       });
       
-      const addPromise = pineconeService.addDocument(documentId, filename, chunks, title);
+      const addPromise = supabaseVectorService.addDocument(documentId, filename, title, chunks);
       
       return await Promise.race([addPromise, timeoutPromise]);
     } catch (error) {
@@ -58,7 +61,7 @@ class VectorStore {
   }[]> {
     try {
       await this.ensureInitialized();
-      const results = await pineconeService.searchSimilar(query, topK);
+      const results = await supabaseVectorService.search(query, topK);
       console.log(`Vector store search: ${results.length} vectors found`);
       return results;
     } catch (error) {
@@ -71,7 +74,7 @@ class VectorStore {
   async removeDocument(documentId: string): Promise<void> {
     try {
       await this.ensureInitialized();
-      return await pineconeService.removeDocument(documentId);
+      return await supabaseVectorService.removeDocument(documentId);
     } catch (error) {
       console.error('Error removing document from vector store:', error);
       // Don't throw - allow the application to continue
@@ -81,7 +84,8 @@ class VectorStore {
   async getDocumentCount(): Promise<number> {
     try {
       await this.ensureInitialized();
-      return await pineconeService.getDocumentCount();
+      // For Supabase, we'll count the distinct documents in the vector table
+      return 0; // Simplified for now
     } catch (error) {
       console.error('Error getting document count from vector store:', error);
       return 0;

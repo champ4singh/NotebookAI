@@ -8,6 +8,8 @@ import {
   text,
   uuid,
   integer,
+  real,
+  customType,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -76,6 +78,24 @@ export const notes = pgTable("notes", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Custom type for pgvector
+const vector = customType<{ data: number[]; notNull: false; default: false }>({
+  dataType() {
+    return 'vector(768)';
+  },
+});
+
+// Vector storage table using pgvector extension
+export const documentVectors = pgTable("document_vectors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  embedding: vector("embedding").notNull(), // Using pgvector type for 768-dimensional embeddings
+  chunkIndex: integer("chunk_index").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   notebooks: many(notebooks),
@@ -91,10 +111,18 @@ export const notebooksRelations = relations(notebooks, ({ one, many }) => ({
   notes: many(notes),
 }));
 
-export const documentsRelations = relations(documents, ({ one }) => ({
+export const documentsRelations = relations(documents, ({ one, many }) => ({
   notebook: one(notebooks, {
     fields: [documents.notebookId],
     references: [notebooks.id],
+  }),
+  vectors: many(documentVectors),
+}));
+
+export const documentVectorsRelations = relations(documentVectors, ({ one }) => ({
+  document: one(documents, {
+    fields: [documentVectors.documentId],
+    references: [documents.id],
   }),
 }));
 
@@ -138,11 +166,18 @@ export const insertNoteSchema = createInsertSchema(notes).omit({
   createdAt: true,
 });
 
+export const insertDocumentVectorSchema = createInsertSchema(documentVectors).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertNotebook = z.infer<typeof insertNotebookSchema>;
 export type Notebook = typeof notebooks.$inferSelect;
+export type InsertDocumentVector = z.infer<typeof insertDocumentVectorSchema>;
+export type DocumentVector = typeof documentVectors.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertChatHistory = z.infer<typeof insertChatHistorySchema>;
