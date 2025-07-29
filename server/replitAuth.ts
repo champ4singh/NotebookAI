@@ -8,15 +8,22 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
+// Set default domain if not provided
 if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+  const hostname = process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'localhost:5000';
+  process.env.REPLIT_DOMAINS = hostname;
+  console.log(`Using default domain: ${hostname}`);
 }
 
 const getOidcConfig = memoize(
   async () => {
+    const replId = process.env.REPL_ID || 'default-repl-id';
+    const issuerUrl = process.env.ISSUER_URL || "https://replit.com/oidc";
+    console.log(`OIDC Config - Issuer: ${issuerUrl}, Client ID: ${replId}`);
+    
     return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
+      new URL(issuerUrl),
+      replId
     );
   },
   { maxAge: 3600 * 1000 }
@@ -86,12 +93,18 @@ export async function setupAuth(app: Express) {
 
   for (const domain of process.env
     .REPLIT_DOMAINS!.split(",")) {
+    const callbackURL = domain.includes('localhost') ? 
+      `http://${domain}/api/callback` : 
+      `https://${domain}/api/callback`;
+    
+    console.log(`Setting up auth strategy for domain: ${domain}, callback: ${callbackURL}`);
+    
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
         config,
         scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
+        callbackURL,
       },
       verify,
     );
@@ -117,10 +130,13 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
+      const protocol = req.hostname.includes('localhost') ? 'http' : 'https';
+      const redirectUri = `${protocol}://${req.hostname}${req.hostname.includes('localhost') ? ':5000' : ''}`;
+      
       res.redirect(
         client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+          client_id: process.env.REPL_ID || 'default-repl-id',
+          post_logout_redirect_uri: redirectUri,
         }).href
       );
     });
