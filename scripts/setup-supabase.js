@@ -196,11 +196,22 @@ async function main() {
       }
     };
     
-    console.log('Executing database schema...');
+    console.log('ERROR: The REST API approach doesn\\'t support DDL operations.');
+    console.log('Please use one of these alternatives:');
+    console.log('');
+    console.log('OPTION 1 (RECOMMENDED): Use the SQL script directly');
+    console.log('1. Go to your Supabase Dashboard');
+    console.log('2. Navigate to SQL Editor');
+    console.log('3. Copy and paste the contents of \\'supabase-schema.sql\\'');
+    console.log('4. Click \\'Run\\' to execute');
+    console.log('');
+    console.log('OPTION 2: Use the direct SQL Python script');
+    console.log('1. Install psycopg2: pip install psycopg2-binary');
+    console.log('2. Run: python setup-supabase-sql.py');
+    console.log('3. Enter your database connection details');
+    console.log('');
     
-    const response = await makeRequest(options, {
-      sql: SCHEMA_SQL
-    });
+    const response = { status: 400, data: 'REST API method not supported for DDL' };
     
     if (response.status === 200 || response.status === 204) {
       console.log('✅ Database schema created successfully!');

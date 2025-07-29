@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 
 """
-NotebookAI Supabase Setup Script (Python)
-Run this script from any Windows or Linux system to set up your Supabase database
+NotebookAI Supabase Setup Script (Direct SQL)
+This script connects directly to PostgreSQL using psycopg2 to execute the schema
 
 Usage:
-python setup-supabase.py
+pip install psycopg2-binary
+python setup-supabase-sql.py
 
-The script will prompt for your Supabase credentials and set up the complete database schema.
+The script will prompt for your database credentials and set up the complete database schema.
 """
 
-import json
-import urllib.request
-import urllib.parse
-import urllib.error
-import re
 import sys
+
+try:
+    import psycopg2
+except ImportError:
+    print("Error: psycopg2 is required. Install it with:")
+    print("pip install psycopg2-binary")
+    sys.exit(1)
 
 def get_user_input(prompt):
     """Get user input with prompt"""
@@ -24,34 +27,6 @@ def get_user_input(prompt):
     except KeyboardInterrupt:
         print("\nSetup cancelled by user")
         sys.exit(0)
-
-def make_request(url, data=None, headers=None):
-    """Make HTTP request"""
-    if headers is None:
-        headers = {}
-    
-    if data:
-        data = json.dumps(data).encode('utf-8')
-        headers['Content-Type'] = 'application/json'
-    
-    req = urllib.request.Request(url, data=data, headers=headers)
-    
-    try:
-        with urllib.request.urlopen(req) as response:
-            return {
-                'status': response.getcode(),
-                'data': json.loads(response.read().decode('utf-8'))
-            }
-    except urllib.error.HTTPError as e:
-        return {
-            'status': e.code,
-            'data': e.read().decode('utf-8')
-        }
-    except json.JSONDecodeError:
-        return {
-            'status': response.getcode(),
-            'data': response.read().decode('utf-8')
-        }
 
 # SQL Schema
 SCHEMA_SQL = """
@@ -154,60 +129,83 @@ ON CONFLICT (id) DO NOTHING;
 """
 
 def main():
-    print("=== NotebookAI Supabase Setup Script ===\n")
+    print("=== NotebookAI Supabase Setup Script (Direct SQL) ===\n")
     
     try:
-        # Get user credentials
-        print("Please provide your Supabase credentials:")
-        supabase_url = get_user_input("SUPABASE_URL (e.g., https://your-project.supabase.co): ")
-        supabase_service_key = get_user_input("SUPABASE_SERVICE_ROLE_KEY: ")
-        supabase_anon_key = get_user_input("SUPABASE_ANON_KEY: ")
-        database_url = get_user_input("DATABASE_URL (optional, for verification): ")
+        # Get database connection details
+        print("Please provide your database connection details:")
+        print("You can use either format:")
+        print("1. Full DATABASE_URL: postgresql://user:pass@host:port/dbname")
+        print("2. Individual components\n")
         
-        if not supabase_url or not supabase_service_key:
-            print("Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required")
-            sys.exit(1)
+        database_url = get_user_input("DATABASE_URL (or press Enter to use components): ")
         
-        # Extract project reference from URL
-        url_match = re.match(r'https://([^.]+)\.supabase\.co', supabase_url)
-        if not url_match:
-            print("Error: Invalid SUPABASE_URL format")
-            sys.exit(1)
-        
-        project_ref = url_match.group(1)
-        print(f"\nConnecting to Supabase project: {project_ref}\n")
-        
-        print("ERROR: The REST API approach doesn't support DDL operations.")
-        print("Please use one of these alternatives:")
-        print("")
-        print("OPTION 1 (RECOMMENDED): Use the SQL script directly")
-        print("1. Go to your Supabase Dashboard")
-        print("2. Navigate to SQL Editor")
-        print("3. Copy and paste the contents of 'supabase-schema.sql'")
-        print("4. Click 'Run' to execute")
-        print("")
-        print("OPTION 2: Use the direct SQL Python script")
-        print("1. Install psycopg2: pip install psycopg2-binary")
-        print("2. Run: python setup-supabase-sql.py")
-        print("3. Enter your database connection details")
-        print("")
-        
-        response = {'status': 400, 'data': 'REST API method not supported for DDL'}
-        
-        if response['status'] in [200, 204]:
-            print("✅ Database schema created successfully!")
-            print("✅ Sample data inserted!")
-            print("\n=== Setup Complete ===")
-            print("Your NotebookAI database is ready to use.")
-            print("\nSample data created:")
-            print("- Demo user: demo@notebookai.com")
-            print("- Sample notebook: 'Sample Research Notebook'")
-            print("- Welcome note with instructions")
+        if database_url:
+            # Use full database URL
+            conn_params = database_url
         else:
-            print(f"Error: HTTP {response['status']}")
-            print("Response:", response['data'])
-            sys.exit(1)
+            # Get individual components
+            host = get_user_input("Host (e.g., db.your-project.supabase.co): ")
+            port = get_user_input("Port (default 5432): ") or "5432"
+            database = get_user_input("Database name (default postgres): ") or "postgres"
+            user = get_user_input("Username (default postgres): ") or "postgres"
+            password = get_user_input("Password: ")
             
+            if not password:
+                print("Error: Password is required")
+                sys.exit(1)
+            
+            conn_params = {
+                'host': host,
+                'port': port,
+                'database': database,
+                'user': user,
+                'password': password
+            }
+        
+        print(f"\nConnecting to database...")
+        
+        # Connect to database
+        conn = psycopg2.connect(conn_params)
+        conn.autocommit = True
+        
+        cursor = conn.cursor()
+        
+        print("Executing database schema...")
+        
+        # Execute the schema
+        cursor.execute(SCHEMA_SQL)
+        
+        print("✅ Database schema created successfully!")
+        print("✅ Sample data inserted!")
+        print("\n=== Setup Complete ===")
+        print("Your NotebookAI database is ready to use.")
+        print("\nSample data created:")
+        print("- Demo user: demo@notebookai.com")
+        print("- Sample notebook: 'Sample Research Notebook'")
+        print("- Welcome note with instructions")
+        
+        # Verify tables exist
+        cursor.execute("""
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            ORDER BY table_name;
+        """)
+        
+        tables = [row[0] for row in cursor.fetchall()]
+        expected_tables = ['users', 'notebooks', 'documents', 'document_vectors', 'chat_history', 'notes', 'sessions']
+        
+        print(f"\n✅ Created tables: {', '.join(tables)}")
+        missing_tables = [t for t in expected_tables if t not in tables]
+        if missing_tables:
+            print(f"⚠️  Missing tables: {', '.join(missing_tables)}")
+        
+        cursor.close()
+        conn.close()
+        
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        sys.exit(1)
     except Exception as error:
         print(f"Setup failed: {error}")
         sys.exit(1)

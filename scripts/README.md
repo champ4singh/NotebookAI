@@ -29,7 +29,7 @@ You'll need one of the following:
 node setup-supabase.js
 ```
 
-### Python Version
+### Python Version (REST API - Limited)
 
 ```bash
 # Make sure you have Python 3 installed
@@ -38,14 +38,34 @@ python setup-supabase.py
 python3 setup-supabase.py
 ```
 
+### Python Version (Direct SQL - Recommended)
+
+```bash
+# Install required dependency
+pip install psycopg2-binary
+
+# Run the script
+python setup-supabase-sql.py
+# or
+python3 setup-supabase-sql.py
+```
+
 ### Required Information
 
-Both scripts will prompt you for:
-
+**For REST API scripts** (`setup-supabase.js` and `setup-supabase.py`):
 1. **SUPABASE_URL**: Your Supabase project URL (e.g., `https://your-project-id.supabase.co`)
 2. **SUPABASE_SERVICE_ROLE_KEY**: Service role key from your Supabase project settings
 3. **SUPABASE_ANON_KEY**: Anonymous key from your Supabase project settings
 4. **DATABASE_URL**: (Optional) Your database connection string for verification
+
+**For Direct SQL script** (`setup-supabase-sql.py`):
+1. **DATABASE_URL**: Full PostgreSQL connection string, OR
+2. Individual connection details:
+   - Host (e.g., `db.your-project.supabase.co`)
+   - Port (usually `5432`)
+   - Database name (usually `postgres`)
+   - Username (usually `postgres`)
+   - Password (your database password)
 
 ### How to Get Your Supabase Keys
 
